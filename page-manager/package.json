@@ -1,6 +1,6 @@
 {
   "name": "@trullock/page-manager",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Single page app manager",
   "main": "src/index",
   "type:": "mdule",

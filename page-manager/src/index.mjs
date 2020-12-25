@@ -1,4 +1,4 @@
-import router from './router.js';
+import router from './router';
 
 var currentPage, currentPagePath, pageHash = {}, pageCache = {};
 var currentState = { uid: 0 };

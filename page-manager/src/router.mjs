@@ -1,4 +1,4 @@
-import PatternLexer from './pattern-lexer.js'
+import PatternLexer from './pattern-lexer'
 
 function isKind(val, kind) {
 	return '[object ' + kind + ']' === Object.prototype.toString.call(val);
