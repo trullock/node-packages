@@ -1,7 +1,7 @@
 {
-  "name": "@trullock/pubsub",
-  "version": "0.1.4",
-  "description": "Pub/Sub message bus",
+  "name": "@trullock/forms",
+  "version": "0.1.2",
+  "description": "HTML extensions for DOM selection and manipulation",
   "exports": {
     ".": "./src/index.js"
   },
