@@ -76,7 +76,7 @@ export default function(language){
 		});
 
 	}
-	
+
 	HTMLFormElement.prototype.enableSubmitButtonTracking = function () {
         var $form = this;
         var $submitButtons = $form.querySelectorAll('button[type=submit], button:not([type])');
@@ -338,4 +338,71 @@ export default function(language){
 		return $form.fetching;
 	}
 	
+	
+    HTMLButtonElement.prototype.setSubmitting = function(submitting) {
+        if(submitting)
+        {         
+            if(!this.$spinner)
+            {
+                this.$spinner = document.createElement('span');
+                this.$spinner.classList.add('spinner-border', 'spinner-border-sm', 'ml-2');
+                this.$spinner.setAttribute('role', 'status');
+                this.$spinner.setAttribute('aria-hidden', 'true');
+            }
+
+            this.$fe = this.querySelector('.fe');
+            if(this.$fe)
+                this.replaceChild(this.$spinner, this.$fe);
+            else
+                this.appendChild(this.$spinner);
+
+            this.disabled = true;
+        }
+        else
+        {
+            if(this.$spinner && this.$spinner.parentElement == this)
+            {
+                if(this.$fe)
+                    this.replaceChild(this.$fe, this.$spinner);
+                else
+                    this.removeChild(this.$spinner);
+            }
+
+            this.disabled = false;
+        }
+    }
+
+	HTMLFormElement.prototype.setSubmitting = function(submitting, $button) {
+        
+        $button = $button || this.clickedButton;
+        
+        if (submitting) {
+			if($button)
+                $button.setSubmitting(true);
+                
+            var $elements = this.querySelectorAll('input, select, textarea, button');
+
+            for (let i = 0; i < $elements.length; i++) {
+                $elements[i].originallyDisabled = $elements[i].disabled;
+                $elements[i].disabled = true;
+            }
+
+		} else {
+            var $elements = this.querySelectorAll('input, select, textarea, button');
+
+            for (let i = 0; i < $elements.length; i++)
+                $elements[i].disabled = $elements[i].originallyDisabled;
+
+                if($button)
+                    $button.setSubmitting(false);
+        }
+    }
+
+    HTMLFormElement.prototype.submitOnCtrlEnter = function () {
+        var me = this;
+        this.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.keyCode === 13)
+                me.dispatchEvent(new Event('submit'));
+        });
+    }
 }
