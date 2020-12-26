@@ -14,5 +14,8 @@
   "license": "ISC",
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@trullock/router": "^0.2.2"
   }
 }
