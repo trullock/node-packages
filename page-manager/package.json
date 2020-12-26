@@ -3,7 +3,8 @@
   "version": "0.2.3",
   "description": "Single page app manager",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./pageshowerror": "./src/pageshowerror.js"
   },
   "module": "./src/index.js",
   "type": "module",
