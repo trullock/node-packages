@@ -1,8 +1,12 @@
 {
-  "name": "page-manager",
+  "name": "@trullock/page-manager",
   "version": "0.2.1",
   "description": "Single page app manager",
-  "main": "src/index",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "module": "./src/index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\""
   },
