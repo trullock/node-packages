@@ -1,7 +1,7 @@
 {
-  "name": "@trullock/page-manager",
-  "version": "0.2.3",
-  "description": "Single page app manager",
+  "name": "@trullock/forms",
+  "version": "0.1.0",
+  "description": "HTML extensions for Form components",
   "exports": {
     ".": "./src/index.js"
   },
@@ -14,8 +14,5 @@
   "license": "ISC",
   "publishConfig": {
     "access": "public"
-  },
-  "dependencies": {
-    "@trullock/router": "^0.2.2"
   }
 }
