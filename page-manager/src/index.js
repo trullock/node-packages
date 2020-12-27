@@ -5,8 +5,6 @@ var currentState = { uid: 0 };
 var manuallyAdjustingHistory = false;
 var goal = null;
 
-var $navbar = null;
-
 export const pages = pageHash;
 
 export function registerPage(name, route, pageClass)
@@ -37,11 +35,6 @@ function doShow(route, page, data, event){
 	currentPage = page;
 
 	document.title = page.title;
-
-	if(page.constructor.showNavbar !== false)
-		$navbar.classList.remove('d-none');
-	else
-		$navbar.classList.add('d-none');
 
 	return pageCache['/loading'].page.show().then(() => 
 		currentPage.show(data, event)
@@ -133,8 +126,6 @@ function handleHistoryAction(event, url, title, data){
 
 export function init() {
 	
-	$navbar = document.$('.js-navbar');
-
 	// handle pages whose markup is already loaded in the page
 	for(var key in pageHash){
 		if(pageHash[key].pageClass.existingDomSelector){
