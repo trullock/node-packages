@@ -266,7 +266,7 @@ export default function(language){
 
 		if ($message) {
 			$message.classList.add('invalid-feedback');
-			$message.innerText = message;
+			$message.innerHTML = message;
 		}
 	};
 
@@ -277,7 +277,7 @@ export default function(language){
 		var $message = this.findMessage();
 		if ($message) {
             $message.classList.remove('valid-feedback', 'invalid-feedback');
-            $message.innerText = '';
+            $message.innerHTML = '';
         }
 
 		var $wrapper = this.closest('.form-group');
