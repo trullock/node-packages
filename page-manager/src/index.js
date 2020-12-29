@@ -28,7 +28,7 @@ export function getPath(name, values)
 	return url;
 }
 
-function doShow(route, page, data, event){
+function doShow(route, page, data){
 
 	window.scroll(0, 0);
 	currentPagePath = route.path;
@@ -37,7 +37,7 @@ function doShow(route, page, data, event){
 	document.title = page.title;
 
 	return pageCache['/loading'].page.show().then(() => 
-		currentPage.show(data, { event, route })
+		currentPage.show(data)
 			.then(() => pageCache['/loading'].page.hide(), e => {
 				console.error(e);
 				return showPage(e.url, e.data, { action: e.action || 'show' });
@@ -75,9 +75,12 @@ function showPage(url, data, event) {
 	data = data || {};
 	for(let key in route.params)
 		data[key] = route.params[key];
+
+	data.route = route;
+	data.event = event;
 	
 	if (route.pageClass.requireAuth && !firebase.auth().currentUser) {
-		goal = { url, data, event };
+		goal = { url, data };
 		return showPage(getPath('sign-in'), null, event);
 	}
 	
@@ -90,17 +93,17 @@ function showPage(url, data, event) {
 
 	// handle initial page
 	if(!currentPage)
-		return getPage.then(page => doShow(route, page, data, event));
+		return getPage.then(page => doShow(route, page, data));
 	
 	if (currentPagePath == route.path){
 		handleHistoryAction(event, url, data);
-		return getPage.then(page => doShow(route, page, data, event));
+		return getPage.then(page => doShow(route, page, data));
 	}
 
 	return currentPage.hide(event).then(() => 
 			getPage.then(page => {
 				handleHistoryAction(event, url, page.title, data);
-				return doShow(route, page, data, event);
+				return doShow(route, page, data);
 			})
 		, e => {
 			manuallyAdjustingHistory = () => manuallyAdjustingHistory = false;
