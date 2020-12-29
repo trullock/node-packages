@@ -37,7 +37,7 @@ function doShow(route, page, data, event){
 	document.title = page.title;
 
 	return pageCache['/loading'].page.show().then(() => 
-		currentPage.show(data, event)
+		currentPage.show(data, { event, route })
 			.then(() => pageCache['/loading'].page.hide(), e => {
 				console.error(e);
 				return showPage(e.url, e.data, { action: e.action || 'show' });
