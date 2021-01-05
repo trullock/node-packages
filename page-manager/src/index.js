@@ -91,9 +91,9 @@ function showPage(url, data, event) {
 		data[key] = route.params[key];
 
 	data.route = {
-		path: path.toLowerCase(),
-		routeName: route._name,
-		params: params
+		path: route.path,
+		routeName: route.routeName,
+		params: route.params
 	};
 	data.event = event;
 	
