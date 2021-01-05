@@ -19,7 +19,6 @@ export function registerPage(name, route, pageClass)
 	return pageClass;
 }
 
-
 export function getPath(name, values)
 {
 	let url = router.interpolate(name, values);
@@ -36,13 +35,28 @@ function doShow(route, page, data){
 
 	document.title = page.title;
 
-	return pageCache['/loading'].page.show().then(() => 
+	return showLoading().then(() => 
 		currentPage.show(data)
+			// todo: hide() should be passed an event object
 			.then(() => pageCache['/loading'].page.hide(), e => {
 				console.error(e);
 				return showPage(e.url, e.data, { action: e.action || 'show' });
 			})
 		)
+}
+
+function showLoading() {
+	var route = router.parse('/loading');
+	var data = {
+		route: route,
+		event: {
+			action: 'replace'
+		}
+	};
+
+	var page = pageCache['/loading'].page;
+
+	return page.show(data);
 }
 
 function loadPage(route){
@@ -84,7 +98,7 @@ function showPage(url, data, event) {
 		return showPage(getPath('sign-in'), null, event);
 	}
 	
-	var getPage = pageCache['/loading'].page.show().then(() => {
+	var getPage = showLoading().then(() => {
 		if(pageCache[route.pattern])
 			return pageCache[route.pattern].page;
 
