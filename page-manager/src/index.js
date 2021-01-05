@@ -90,7 +90,11 @@ function showPage(url, data, event) {
 	for(let key in route.params)
 		data[key] = route.params[key];
 
-	data.route = route;
+	data.route = {
+		path: path.toLowerCase(),
+		routeName: route._name,
+		params: params
+	};
 	data.event = event;
 	
 	if (route.pageClass.requireAuth && !firebase.auth().currentUser) {
