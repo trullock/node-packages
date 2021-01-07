@@ -33,10 +33,9 @@ function doShow(route, page, data){
 	currentPagePath = route.path;
 	currentPage = page;
 
-	document.title = page.title;
-
 	return showLoading().then(() => 
 		currentPage.show(data)
+			.then(() => document.title = currentPage.title)
 			// todo: hide() should be passed an event object
 			.then(() => pageCache['/loading'].page.hide(), e => {
 				console.error(e);
@@ -120,7 +119,7 @@ function showPage(url, data, event) {
 
 	return currentPage.hide(event).then(() => 
 			getPage.then(page => {
-				handleHistoryAction(event, url, page.title, data);
+				handleHistoryAction(event, url, data);
 				return doShow(route, page, data);
 			})
 		, e => {
@@ -132,16 +131,16 @@ function showPage(url, data, event) {
 		});
 }
 
-function handleHistoryAction(event, url, title, data){
+function handleHistoryAction(event, url, data){
 	if(event.action == 'push')
 	{
 		currentState = { uid: ++currentState.uid, data };
-		window.history.pushState(currentState, title, url);
+		window.history.pushState(currentState, null, url);
 	}
 	else if(event.action == 'replace')
 	{
 		currentState = { uid: currentState.uid, data };
-		window.history.replaceState(currentState, title, url);
+		window.history.replaceState(currentState, null, url);
 	}
 }
 
@@ -200,10 +199,9 @@ export function navigate(url, data) {
 export function update(opts) {
 	opts = Object.assign({
 		url: window.location.pathname + window.location.search + window.location.hash,
-		title: currentPage.title,
 		data: {}
 	}, opts);
-	handleHistoryAction({ action: 'replace', distance: 0 }, opts.url, opts.title, opts.data);
+	handleHistoryAction({ action: 'replace', distance: 0 }, opts.url, opts.data);
 }
 
 export function replace(url, data) {
@@ -222,12 +220,11 @@ export function rewind(method) {
 	// This is only safe if youre confident theres a hashless path in our history, else it may go offsite
 	if(method == 'drop-hash'){
 		let originalUrl = window.location.pathname + window.location.search + window.location.hash;
-		let originalTitle = currentPage.title;
 		return new Promise((resolve) => {
 			manuallyAdjustingHistory = opts => {
 				if (!opts.hash)
 				{
-					handleHistoryAction({ action: 'push', distance: 0 }, originalUrl, originalTitle, {});
+					handleHistoryAction({ action: 'push', distance: 0 }, originalUrl, {});
 					manuallyAdjustingHistory = false;
 					resolve();
 				} else {
