@@ -67,12 +67,12 @@ function loadPage(route, data) {
 	return fetchPage.then($template => {
 		var $html = $template.cloneNode(true);
 		document.body.appendChild($html);
-		pageCache[route.pattern] = {
+		pageCache[route.path] = {
 			$html,
 			page: new (route.pageClass)($html)
 		}
 
-		var page = pageCache[route.pattern].page;
+		var page = pageCache[route.path].page;
 		return page.boot(data).then(() => page);
 	});
 }
