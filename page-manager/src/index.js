@@ -142,7 +142,8 @@ function doShow(route, page, data) {
 			// todo: hide() should be passed an event object
 			.then(() => pageCache['/loading'].page.hide(), e => {
 				console.error(e);
-				return showPage(e.url, e.data, { action: e.action || 'show' });
+				if (e instanceof PageShowError)
+					return showPage(e.url, e.data, { action: e.action || 'show' });
 			})
 	)
 }
