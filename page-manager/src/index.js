@@ -1,4 +1,5 @@
 import router from '@trullock/router';
+import PageShowError from './pageshowerror.js';
 
 var currentPage,
 	currentPagePath,
