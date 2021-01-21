@@ -404,5 +404,12 @@ export default function(language){
             if (e.ctrlKey && e.keyCode === 13)
                 me.dispatchEvent(new Event('submit'));
         });
-    }
+	};
+	
+	HTMLElement.prototype.addCtrlEnterListener = function(cb, useCapture){
+		return this.addEventListener('keydown', e => {
+			if (e.ctrlKey && e.keyCode === 13)
+				cb.call(this, e);
+		}, useCapture || false);
+	};
 }
