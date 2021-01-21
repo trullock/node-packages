@@ -1,4 +1,4 @@
-export default class extends Error {
+export default class PageShowError extends Error {
 	constructor(url, message, data, action) {
 		super(message || 'Error showing requested page')
 
