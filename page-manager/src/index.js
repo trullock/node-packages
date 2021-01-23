@@ -10,6 +10,7 @@ var currentPage,
 var currentState = { uid: 0 };
 var manuallyAdjustingHistory = false;
 var goal = null;
+var backData = {};
 
 export const pages = pageHash;
 
@@ -179,11 +180,15 @@ export function init() {
 	// listen for browser navigations
 	window.addEventListener("popstate", e => {
 		// initial page has no state
-		let state = e.state || { uid: 0 };
+		let state = e.state || { uid: 0, data: {} };
 		let direction = state.uid > currentState.uid ? 'fwd' : 'back';
 		let distance = Math.abs(state.uid - currentState.uid);
 		// todo: should this be below the next IF?
 		currentState = state;
+
+		if(direction == 'back')
+			Object.assign(e.state.data, backData);
+		backData = {};
 
 		if (manuallyAdjustingHistory) {
 			manuallyAdjustingHistory({
@@ -227,7 +232,8 @@ export function show(url, data) {
 	return showPage(url, data, { action: 'show', distance: 0 });
 }
 
-export function back() {
+export function back(data) {
+	backData = data || {};
 	history.go(-1);
 }
 

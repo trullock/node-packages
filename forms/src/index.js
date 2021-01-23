@@ -401,7 +401,7 @@ export default function(language){
     HTMLFormElement.prototype.submitOnCtrlEnter = function () {
         var me = this;
         this.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.keyCode === 13)
+            if (e.ctrlKey && e.key === 'Enter')
                 me.dispatchEvent(new Event('submit'));
         });
 	};
