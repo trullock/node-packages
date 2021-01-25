@@ -11,6 +11,9 @@ var currentState = { uid: 0 };
 var manuallyAdjustingHistory = false;
 var goal = null;
 var backData = {};
+var options = {
+	fetchPath = route => '/pages/' + route.routeName + '.html'
+}
 
 export const pages = pageHash;
 
@@ -32,7 +35,6 @@ export function getPath(name, values) {
 	return url;
 }
 
-
 function showLoading() {
 	var route = router.parse('/loading');
 	var data = {
@@ -48,7 +50,7 @@ function showLoading() {
 }
 
 function fetchPageTemplate(route) {
-	return fetch('/pages/' + route.routeName + '.html')
+	return fetch(options.fetchPath(route))
 		.then(r => r.text())
 		.then(html => {
 			var $div = document.createElement('div');
@@ -161,7 +163,9 @@ function handleHistoryAction(event, url, data) {
 	}
 }
 
-export function init() {
+export function init(opts) {
+
+	Object.assign(options, opts);
 
 	// handle pages whose markup is already loaded in the page
 	for (var key in pageHash) {
