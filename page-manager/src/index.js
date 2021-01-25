@@ -12,7 +12,7 @@ var manuallyAdjustingHistory = false;
 var goal = null;
 var backData = {};
 var options = {
-	fetchPath = route => '/pages/' + route.routeName + '.html'
+	fetchPath: route => '/pages/' + route.routeName + '.html'
 }
 
 export const pages = pageHash;
