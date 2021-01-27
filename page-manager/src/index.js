@@ -13,7 +13,8 @@ var goal = null;
 var backData = {};
 var options = {
 	fetchPath: route => '/pages/' + route.routeName + '.html',
-	pageContainer: () => document.body
+	pageContainer: () => document.body,
+	prepareMarkup: $html => {}
 }
 
 export const pages = pageHash;
@@ -71,6 +72,7 @@ function loadPage(route, data) {
 
 	return fetchPage.then($template => {
 		var $html = $template.cloneNode(true);
+		options.prepareMarkup($html);
 		options.pageContainer().appendChild($html);
 		pageCache[route.path] = {
 			$html,
