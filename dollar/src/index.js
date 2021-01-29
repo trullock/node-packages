@@ -16,7 +16,7 @@ HTMLElement.prototype.remove = function () {
 	return this.parentElement.removeChild(this);
 }
 HTMLDocument.prototype.$$ = function (selector) {
-	return this.querySelectorAll(selector);
+	return [...this.querySelectorAll(selector)];
 }
 HTMLDocument.prototype.$ = function (selector) {
 	return this.querySelector(selector);
