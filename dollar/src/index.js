@@ -5,7 +5,7 @@ HTMLElement.prototype.addClickListener = function(cb, useCapture){
 	}, useCapture || false);
 }
 HTMLElement.prototype.$$ = function (selector) {
-	return this.querySelectorAll(selector);
+	return [...this.querySelectorAll(selector)];
 }
 HTMLElement.prototype.$ = function (selector) {
 	return this.querySelector(selector);
