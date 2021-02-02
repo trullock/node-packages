@@ -15,7 +15,8 @@ var options = {
 	fetchPath: route => '/pages/' + route.routeName + '.html',
 	pageContainer: () => document.body,
 	prepareMarkup: $html => {},
-	loadingPageName: 'loading'
+	loadingPageName: 'loading',
+	defaultPageName: 'root'
 }
 
 export const pages = pageHash;
@@ -217,7 +218,7 @@ export function init(opts) {
 
 export function navigate(url, data) {
 	if (url === 'goal') {
-		url = goal ? goal.url : data?.fallback || getPath('root');
+		url = goal ? goal.url : data?.fallback || getPath(options.defaultPageName);
 		data = goal?.data || {}
 		goal = null;
 	}
