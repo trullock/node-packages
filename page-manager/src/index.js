@@ -14,7 +14,8 @@ var backData = {};
 var options = {
 	fetchPath: route => '/pages/' + route.routeName + '.html',
 	pageContainer: () => document.body,
-	prepareMarkup: $html => {}
+	prepareMarkup: $html => {},
+	loadingPageName: 'loading'
 }
 
 export const pages = pageHash;
@@ -38,7 +39,8 @@ export function getPath(name, values) {
 }
 
 function showLoading() {
-	var route = router.parse('/loading');
+	var page = pageHash[options.loadingPageName];
+	var route = router.parse(page.url);
 	var data = {
 		route: route,
 		event: {
@@ -46,7 +48,7 @@ function showLoading() {
 		}
 	};
 
-	var page = pageCache['/loading'].page;
+	var page = pageCache[page.url].page;
 
 	return page.show(data);
 }
@@ -147,7 +149,7 @@ function doShow(route, page, data) {
 		currentPage.show(data)
 			.then(() => document.title = currentPage.title)
 			// todo: hide() should be passed an event object
-			.then(() => pageCache['/loading'].page.hide(), e => {
+			.then(() => pageCache[pageHash[options.loadingPageName]].page.hide(), e => {
 				console.error(e);
 				if (e instanceof PageShowError)
 					return showPage(e.url, e.data, { action: e.action || 'show' });
