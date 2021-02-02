@@ -149,7 +149,7 @@ function doShow(route, page, data) {
 		currentPage.show(data)
 			.then(() => document.title = currentPage.title)
 			// todo: hide() should be passed an event object
-			.then(() => pageCache[pageHash[options.loadingPageName]].page.hide(), e => {
+			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide(), e => {
 				console.error(e);
 				if (e instanceof PageShowError)
 					return showPage(e.url, e.data, { action: e.action || 'show' });
