@@ -151,11 +151,7 @@ function doShow(route, page, data) {
 		currentPage.show(data)
 			.then(() => document.title = currentPage.title)
 			// todo: hide() should be passed an event object
-			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide(), e => {
-				console.error(e);
-				if (e instanceof PageShowError)
-					return showPage(e.url, e.data, { action: e.action || 'show' });
-			})
+			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
 	)
 }
 
@@ -186,7 +182,11 @@ export function init(opts) {
 	}
 
 	// set initial page
-	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 })
+	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
+		console.error(e);
+		if (e instanceof PageShowError)
+			return showPage(e.url, e.data, { action: e.action || 'show' });
+	})
 
 	// listen for browser navigations
 	window.addEventListener("popstate", e => {
@@ -213,7 +213,11 @@ export function init(opts) {
 			return;
 		}
 
-		showPage(window.location.pathname + window.location.search + window.location.hash, state.data, { action: direction, distance });
+		showPage(window.location.pathname + window.location.search + window.location.hash, state.data, { action: direction, distance }).catch(e => {
+			console.error(e);
+			if (e instanceof PageShowError)
+				return showPage(e.url, e.data, { action: e.action || 'show' });
+		});
 	});
 }
 
