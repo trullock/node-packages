@@ -16,6 +16,7 @@ var options = {
 	pageContainer: () => document.body,
 	prepareMarkup: $html => {},
 	loadingPageName: 'loading',
+	error404PageName: 'error-404',
 	defaultPageName: 'root'
 }
 
@@ -91,7 +92,7 @@ function showPage(url, data, event) {
 	var route = router.parse(url);
 	if (route == null) {
 		console.error(`Can't find page: '${url}'`);
-		return Promise.reject(new Error(`Can't find page: '${url}'`));
+		return Promise.reject(new PageShowError(pageHash[options.error404PageName].url, `Can't find page: '${url}'`, {}, 'replace'));
 	}
 
 	data = data || {};
