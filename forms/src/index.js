@@ -401,14 +401,14 @@ export default function(language){
     HTMLFormElement.prototype.submitOnCtrlEnter = function () {
         var me = this;
         this.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter')
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter')
                 me.dispatchEvent(new Event('submit'));
         });
 	};
 	
 	HTMLElement.prototype.addCtrlEnterListener = function(cb, useCapture){
 		return this.addEventListener('keydown', e => {
-			if (e.ctrlKey && e.keyCode === 13)
+			if ((e.ctrlKey || e.metaKey) && e.key === 'Enter')
 				cb.call(this, e);
 		}, useCapture || false);
 	};
