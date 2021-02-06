@@ -1,6 +1,6 @@
 {
   "name": "@trullock/forms",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "HTML extensions for Form components",
   "exports": {
     ".": "./src/index.js"
