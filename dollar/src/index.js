@@ -36,7 +36,7 @@ HTMLElement.prototype.offset = function(){
 		if (!isNaN(elem.offsetTop))
 			offsetTop += elem.offsetTop;
 		if (!isNaN(elem.offsetLeft))
-			offsetTop += elem.offsetLeft;
+			offsetLeft += elem.offsetLeft;
 	} while (elem = elem.offsetParent);
 	return {
 		top: offsetTop,
