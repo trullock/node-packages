@@ -26,3 +26,15 @@ HTMLElement.prototype.empty = function () {
 	while(this.firstElementChild)
 		this.removeChild(this.firstElementChild);
 }
+
+
+HTMLElement.prototype.offsetTop = function(){
+	let offsetTop = 0;
+	let elem = this;
+	do {
+		if (!isNaN(elem.offsetTop)) {
+			offsetTop += elem.offsetTop;
+		}
+	} while (elem = elem.offsetParent);
+	return offsetTop;
+}
