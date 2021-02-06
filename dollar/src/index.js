@@ -28,13 +28,18 @@ HTMLElement.prototype.empty = function () {
 }
 
 
-HTMLElement.prototype.offsetTop = function(){
+HTMLElement.prototype.offset = function(){
 	let offsetTop = 0;
+	let offsetLeft = 0;
 	let elem = this;
 	do {
-		if (!isNaN(elem.offsetTop)) {
+		if (!isNaN(elem.offsetTop))
 			offsetTop += elem.offsetTop;
-		}
+		if (!isNaN(elem.offsetLeft))
+			offsetTop += elem.offsetLeft;
 	} while (elem = elem.offsetParent);
-	return offsetTop;
+	return {
+		top: offsetTop,
+		left: offsetLeft
+	};
 }
