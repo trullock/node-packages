@@ -7,14 +7,14 @@ var currentPage,
 	pageCache = {},
 	pageTemplateCache = {};
 
-var currentState = { uid: 0 };
+var currentState = { uid: 0, data: {} };
 var manuallyAdjustingHistory = false;
 var goal = null;
 var backData = {};
 var options = {
 	fetchPath: route => '/pages/' + route.routeName + '.html',
 	pageContainer: () => document.body,
-	prepareMarkup: $html => {},
+	prepareMarkup: $html => { },
 	loadingPageName: 'loading',
 	error404PageName: 'error-404',
 	defaultPageName: 'root'
@@ -127,6 +127,8 @@ function showPage(url, data, event) {
 		return getPage.then(page => doShow(route, page, data));
 	}
 
+	currentState.data.scrollY = window.scrollY;
+	handleHistoryAction({ action: 'replace' }, window.location, currentState.data);
 	return currentPage.hide(event).then(() =>
 		getPage.then(page => {
 			handleHistoryAction(event, url, data);
@@ -149,7 +151,11 @@ function doShow(route, page, data) {
 
 	return showLoading().then(() =>
 		currentPage.show(data)
-			.then(() => document.title = currentPage.title)
+			.then(() => {
+				document.title = currentPage.title;
+				debugger;
+				window.scroll(0, data.scrollY || 0);
+			})
 			// todo: hide() should be passed an event object
 			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
 	)
@@ -197,7 +203,7 @@ export function init(opts) {
 		// todo: should this be below the next IF?
 		currentState = state;
 
-		if(direction == 'back')
+		if (direction == 'back')
 			Object.assign(e.state.data, backData);
 		backData = {};
 

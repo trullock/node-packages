@@ -152,7 +152,7 @@ export default function(language){
 	};
 
 	HTMLInputElement.prototype.validate = function () {
-		if(this.disabled || this.readOnly)
+		if(this.disabled || this.readOnly || this.hidden)
 		{
 			this.setValid();
 			return true;
@@ -196,6 +196,12 @@ export default function(language){
 		else if(this.type == 'checkbox')
 		{
 			if(this.required && !this.checked){
+				this.setInvalid(language.required)
+				return false
+			}
+		}
+		else if (this.type == 'radio') {
+			if (!this.checkValidity()) {
 				this.setInvalid(language.required)
 				return false
 			}
