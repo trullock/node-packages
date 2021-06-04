@@ -411,6 +411,15 @@ export default function(language){
                 me.dispatchEvent(new Event('submit'));
         });
 	};
+
+
+	HTMLFormElement.prototype.preventEnterSubmitting = function () {
+		this.addEventListener('keydown', function (e) {
+			if (e.key === 'Enter')
+				e.preventDefault();
+		});
+	};
+
 	
 	HTMLElement.prototype.addCtrlEnterListener = function(cb, useCapture){
 		return this.addEventListener('keydown', e => {
