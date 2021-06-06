@@ -9,6 +9,9 @@ var currentPage,
 
 var currentState = { uid: 0, data: {} };
 var manuallyAdjustingHistory = false;
+var handlingBeforeUnload = false;
+var lastNavigationDirection = null;
+
 var goal = null;
 var backData = {};
 var options = {
@@ -17,7 +20,8 @@ var options = {
 	prepareMarkup: $html => { },
 	loadingPageName: 'loading',
 	error404PageName: 'error-404',
-	defaultPageName: 'root'
+	defaultPageName: 'root',
+	beforeUnload: null
 }
 
 export const pages = pageHash;
@@ -45,6 +49,7 @@ function showLoading() {
 	var route = router.parse(page.url);
 	var data = {
 		route: route,
+		scrollY: window.scrollY,
 		event: {
 			action: 'replace'
 		}
@@ -171,6 +176,17 @@ function handleHistoryAction(event, url, data) {
 	}
 }
 
+function doNavigate(url, data) {
+
+	if (url === 'goal') {
+		url = goal ? goal.url : data?.fallback || getPath(options.defaultPageName);
+		data = goal?.data || {}
+		goal = null;
+	}
+
+	return showPage(url, data, { action: 'push', distance: 0 });
+}
+
 export function init(opts) {
 
 	Object.assign(options, opts);
@@ -193,17 +209,12 @@ export function init(opts) {
 			return showPage(e.url, e.data, { action: e.action || 'show' });
 	})
 
-	// listen for browser navigations
-	window.addEventListener("popstate", e => {
-		// initial page has no state
-		let state = e.state || { uid: 0, data: {} };
-		let direction = state.uid > currentState.uid ? 'fwd' : 'back';
-		let distance = Math.abs(state.uid - currentState.uid);
-		// todo: should this be below the next IF?
+	function handlePopstate(state, direction, distance) {
+		// todo: isnt this in the wrong place? should be further down...
 		currentState = state;
 
 		if (direction == 'back')
-			Object.assign(e.state.data, backData);
+			Object.assign(state.data, backData);
 		backData = {};
 
 		if (manuallyAdjustingHistory) {
@@ -223,17 +234,77 @@ export function init(opts) {
 			if (e instanceof PageShowError)
 				return showPage(e.url, e.data, { action: e.action || 'show' });
 		});
+	}
+
+	// listen for browser navigations
+	window.addEventListener("popstate", e => {
+
+		if (handlingBeforeUnload === 1) {
+			// do the beforeUnload action, then...
+			options.beforeUnload(currentPage.beforeUnload()).then(result => {
+
+				// if the user confirmed, redo the original action
+				if (result) {
+
+					handlingBeforeUnload = 2;
+
+					if (lastNavigationDirection == 'fwd')
+						history.forward();
+					else if (lastNavigationDirection == 'back')
+						history.back();
+				} else {
+					handlingBeforeUnload = false;
+				}
+			});
+			return;
+		}
+
+		// initial page has no state
+		let state = e.state || { uid: 0, data: {} };
+		lastNavigationDirection = state.uid > currentState.uid ? 'fwd' : 'back';
+		let distance = Math.abs(state.uid - currentState.uid);
+
+		// if we have a before-unload confirm to show
+		if (currentPage.beforeUnload && options.beforeUnload && handlingBeforeUnload === false) {
+			var interrupt = currentPage.beforeUnload();
+			if (interrupt) {
+				handlingBeforeUnload = 1;
+
+				// do this in a new thread, you cant call history actions from inside a history-aciton-handler
+				window.setTimeout(() => {
+					// undo the navigation so the URL remains correct whilst we show the confirm dialog
+					if (lastNavigationDirection == 'fwd')
+						history.back();
+					else if (lastNavigationDirection == 'back')
+						history.forward();
+				}, 1);
+
+				return;
+			}
+		}
+
+		if (handlingBeforeUnload === 2)
+			handlingBeforeUnload = false;
+
+		handlePopstate(state, lastNavigationDirection, distance);
 	});
 }
 
-export function navigate(url, data) {
-	if (url === 'goal') {
-		url = goal ? goal.url : data?.fallback || getPath(options.defaultPageName);
-		data = goal?.data || {}
-		goal = null;
+export function navigate(url, data, checkBeforeUnload) {
+
+	if (checkBeforeUnload === true && currentPage.beforeUnload && options.beforeUnload) {
+
+		var interrupt = currentPage.beforeUnload();
+		if (interrupt !== false) {
+			options.beforeUnload(interrupt).then(result => {
+				if (result)
+					doNavigate(url, data);
+			});
+			return;
+		}
 	}
 
-	return showPage(url, data, { action: 'push', distance: 0 });
+	doNavigate(url, data);
 }
 
 export function update(opts) {
