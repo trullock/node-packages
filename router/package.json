@@ -1,6 +1,6 @@
 {
   "name": "@trullock/router",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "URL Router",
   "exports": {
     ".": "./src/index.js"
