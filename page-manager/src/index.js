@@ -236,39 +236,18 @@ export function init(opts) {
 		});
 	}
 
-	// listen for browser navigations
-	window.addEventListener("popstate", e => {
-
-		if (handlingBeforeUnload === 1) {
-			// do the beforeUnload action, then...
-			options.beforeUnload(currentPage.beforeUnload()).then(result => {
-
-				// if the user confirmed, redo the original action
-				if (result) {
-
-					handlingBeforeUnload = 2;
-
-					if (lastNavigationDirection == 'fwd')
-						history.forward();
-					else if (lastNavigationDirection == 'back')
-						history.back();
-				} else {
-					handlingBeforeUnload = false;
-				}
-			});
-			return;
+	function handleBeforeUnloadPart1() {
+		// if we're ignoring beforeUnload this navigation
+		if (handlingBeforeUnload === 'ignore') {
+			handlingBeforeUnload = false;
+			return false;
 		}
-
-		// initial page has no state
-		let state = e.state || { uid: 0, data: {} };
-		lastNavigationDirection = state.uid > currentState.uid ? 'fwd' : 'back';
-		let distance = Math.abs(state.uid - currentState.uid);
 
 		// if we have a before-unload confirm to show
 		if (currentPage.beforeUnload && options.beforeUnload && handlingBeforeUnload === false) {
 			var interrupt = currentPage.beforeUnload();
 			if (interrupt) {
-				handlingBeforeUnload = 1;
+				handlingBeforeUnload = 'step1';
 
 				// do this in a new thread, you cant call history actions from inside a history-aciton-handler
 				window.setTimeout(() => {
@@ -279,12 +258,55 @@ export function init(opts) {
 						history.forward();
 				}, 1);
 
-				return;
+				return true;
 			}
 		}
 
-		if (handlingBeforeUnload === 2)
+		// we've finished beforeUnloading
+		if (handlingBeforeUnload === 'step2')
 			handlingBeforeUnload = false;
+
+		return false;
+	}
+
+	function handleBeforeUnloadPart2() {
+		if (handlingBeforeUnload !== 'step1')
+			return false;
+
+		// do the beforeUnload action, then...
+		options.beforeUnload(currentPage.beforeUnload()).then(result => {
+
+			// if the user confirmed, redo the original action
+			if (result) {
+
+				handlingBeforeUnload = 'step2';
+
+				if (lastNavigationDirection == 'fwd')
+					history.forward();
+				else if (lastNavigationDirection == 'back')
+					history.back();
+			} else {
+				handlingBeforeUnload = false;
+			}
+		});
+
+		return true;
+	}
+
+	// listen for browser navigations
+	window.addEventListener("popstate", e => {
+
+		var interrupted = handleBeforeUnloadPart2();
+		if (interrupted)
+			return;
+
+		let state = e.state || { uid: 0, data: {} };
+		lastNavigationDirection = state.uid > currentState.uid ? 'fwd' : 'back';
+		let distance = Math.abs(state.uid - currentState.uid);
+
+		var interrupted = handleBeforeUnloadPart1();
+		if (interrupted)
+			return;
 
 		handlePopstate(state, lastNavigationDirection, distance);
 	});
@@ -323,8 +345,9 @@ export function show(url, data) {
 	return showPage(url, data, { action: 'show', distance: 0 });
 }
 
-export function back(data) {
+export function back(data, checkBeforeUnload) {
 	backData = data || {};
+	handlingBeforeUnload = checkBeforeUnload === false ? 'ignore' : false;
 	history.go(-1);
 }
 
