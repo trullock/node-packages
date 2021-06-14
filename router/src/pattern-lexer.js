@@ -175,14 +175,14 @@ export default function () {
 						if (isArray(rep)) {
 							for (var k in rep) {
 								if (key.slice(-2) == '[]') {
-									queryParts.push(encodeURI(key.slice(0, -2)) + '[]=' + encodeURI(rep[k]));
+									queryParts.push(encodeURIComponent(key.slice(0, -2)) + '[]=' + encodeURIComponent(rep[k]));
 								} else {
-									queryParts.push(encodeURI(key + '=' + rep[k]));
+									queryParts.push(encodeURIComponent(key + '=' + rep[k]));
 								}
 							}
 						}
 						else {
-							queryParts.push(encodeURI(key + '=' + rep));
+							queryParts.push(encodeURIComponent(key + '=' + rep));
 						}
 					}
 					val = '?' + queryParts.join('&');
@@ -212,7 +212,8 @@ export default function () {
 			.replace(TOKENS.OS.rgx, TOKENS.OS.save)
 			.replace(PARAMS_REGEXP, replaceFn)
 			.replace(TOKENS.OS.trail, '') // remove trailing
-			.replace(TOKENS.OS.rRestore, '/'); // add slash between segments
+			.replace(TOKENS.OS.rRestore, '/') // add slash between segments
+			+ (replacements.hash ? '#' + replacements.hash : ''); // append hash
 	}
 
 	//API

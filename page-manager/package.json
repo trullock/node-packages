@@ -17,7 +17,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@trullock/dollar": "^0.1.4",
-    "@trullock/router": "^0.2.2"
+    "@trullock/dollar": "^0.1.6",
+    "@trullock/router": "^0.2.3"
   }
 }
