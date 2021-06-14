@@ -212,8 +212,7 @@ export default function () {
 			.replace(TOKENS.OS.rgx, TOKENS.OS.save)
 			.replace(PARAMS_REGEXP, replaceFn)
 			.replace(TOKENS.OS.trail, '') // remove trailing
-			.replace(TOKENS.OS.rRestore, '/') // add slash between segments
-			+ (replacements.hash ? '#' + replacements.hash : ''); // append hash
+			.replace(TOKENS.OS.rRestore, '/'); // add slash between segments
 	}
 
 	//API
