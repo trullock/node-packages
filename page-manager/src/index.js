@@ -158,7 +158,6 @@ function doShow(route, page, data) {
 		currentPage.show(data)
 			.then(() => {
 				document.title = currentPage.title;
-				window.scroll(0, data.scrollY || 0);
 			})
 			// todo: hide() should be passed an event object
 			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
