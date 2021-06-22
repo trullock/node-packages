@@ -1,0 +1,39 @@
+<html>
+    <style type="text/css">
+        li.red { color: red; }
+        li.green { color: green; }
+    </style>
+    <body>
+        <ul>
+            <li>One</li>
+            <li>Two</li>
+            <li>Three</li>
+        </ul>
+    
+        <form>
+            <input name="name1" />
+            <input name="name2" />
+            <input name="name3" />
+        </form>
+
+        <ol>
+            <li>One</li>
+            <li>Two</li>
+            <li>Three</li>
+        </ol>
+
+        <script src="../src/proxy.js"></script>
+        <script>
+            document.$$('ul li').classList.add('red');
+            document.$$('ul li')[0].classList.add('green');
+            document.$$('ol li').classList.add('green');
+            document.$$('input').value = "test";
+            document.$$('input').style.color = 'green';
+            document.$$('input').map($i => {
+                $i.style.textAlign = 'right';
+            })
+
+            console.log(document.$$('input').value);
+        </script>
+    </body>
+</html>
