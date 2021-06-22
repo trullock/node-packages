@@ -6,26 +6,12 @@ HTMLDocument.prototype.$$ = function (selector) {
 	return new Proxy(this.querySelectorAll(selector), handler);
 }
 
-function proxyLol(obj, prop, type)
-{
-	if(type == 'object')
-		return new Proxy(obj.map(o => o[prop]), handler);
-	
-	if(type == 'function')
-		return function() {
-			obj.map(o => o[prop].apply(o, arguments));	
-		};
-
-	return obj.map(o => o[prop]);
-}
-
 const handler = {
 	
 	get: function(obj, prop) {
 
 		if(obj instanceof NodeList)
 		{
-			
 			obj = [...obj];
 
 			// handle $$('selector')[i]
@@ -34,12 +20,23 @@ const handler = {
 	
 			if(Array.prototype[prop] !== undefined)
 				return obj[prop];
-			
 		}
 
 		var type = typeof obj[0][prop];
-		return proxyLol(obj, prop, type);
+
+		if(type == 'object')
+			return new Proxy(obj.map(o => o[prop]), handler);
+		
+		if(type == 'function')
+		{
+			return function() {
+				obj.map(o => o[prop].apply(o, arguments));	
+			};
+		}
+
+		return obj.map(o => o[prop]);
 	},
+
 	set: function(obj, prop, value) {
 		
 		if(obj instanceof NodeList)
@@ -47,13 +44,17 @@ const handler = {
 			obj = [...obj];
 
 			if(Array.prototype[prop] !== undefined)
+			{
 				obj[prop] = value;
-			
+				return;
+			}	
 		}
 
 		obj.map(o => o[prop] = value);
 	},
+
 	apply: function(obj, thisArg, argumentsList) {
-		obj.map(o => o.apply(this, argumentsList));
+		debugger;
+		obj.map(o => o.apply(thisArg, argumentsList));
 	}
 };
