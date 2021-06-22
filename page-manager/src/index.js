@@ -1,13 +1,12 @@
 import router from '@trullock/router';
 import PageShowError from './pageshowerror.js';
 
-var currentPage,
-	currentPagePath,
-	pageHash = {},
+var pageHash = {},
 	pageCache = {},
-	pageTemplateCache = {};
+	pageTemplateCache = {},
+	stack = [],
+	stackPointer = -1;
 
-var currentState = { uid: 0, data: {} };
 var manuallyAdjustingHistory = false;
 var handlingBeforeUnload = false;
 var lastNavigationDirection = null;
@@ -16,6 +15,20 @@ var goal = null;
 var backData = {};
 var options = {
 	fetchPath: route => '/pages/' + route.routeName + '.html',
+	fetchPageTemplate: route => {
+		return fetch(options.fetchPath(route))
+			.then(r => r.text())
+			.then(html => {
+				var $div = document.createElement('div');
+				$div.innerHTML = html;
+				// Pages are assumed to have a single wrapping element
+				return $div.firstElementChild;
+			})
+			.then($template => {
+				pageTemplateCache[route.pattern] = $template;
+				return $template;
+			});
+	},
 	pageContainer: () => document.body,
 	prepareMarkup: $html => { },
 	loadingPageName: 'loading',
@@ -60,24 +73,9 @@ function showLoading() {
 	return page.show(data);
 }
 
-function fetchPageTemplate(route) {
-	return fetch(options.fetchPath(route))
-		.then(r => r.text())
-		.then(html => {
-			var $div = document.createElement('div');
-			$div.innerHTML = html;
-			// Pages are assumed to have a single wrapping element
-			return $div.firstElementChild;
-		})
-		.then($template => {
-			pageTemplateCache[route.pattern] = $template;
-			return $template;
-		});
-}
-
 function loadPage(route, data) {
 
-	var fetchPage = pageTemplateCache[route.pattern] ? Promise.resolve(pageTemplateCache[route.pattern]) : fetchPageTemplate(route);
+	var fetchPage = pageTemplateCache[route.pattern] ? Promise.resolve(pageTemplateCache[route.pattern]) : options.fetchPageTemplate(route);
 
 	return fetchPage.then($template => {
 		var $html = $template.cloneNode(true);
@@ -105,12 +103,14 @@ function showPage(url, data, event) {
 		data[key] = route.params[key];
 
 	data.route = {
+		url: url,
 		path: route.path,
 		routeName: route.routeName,
 		params: route.params
 	};
 	data.event = event;
 
+	// TODO: abstract
 	if (route.pageClass.requireAuth && !firebase.auth().currentUser) {
 		goal = { url, data };
 		return showPage(getPath('sign-in'), null, event);
@@ -124,55 +124,84 @@ function showPage(url, data, event) {
 	});
 
 	// handle initial page
-	if (!currentPage)
-		return getPage.then(page => doShow(route, page, data));
+	if (stackPointer == -1)
+	{
+		return getPage
+					.then(page => {
+						stack.push({ uid: 0, data, page });
+						stackPointer = 0;
+						return page;
+					})
+					.then(page => doShow(page, data));
+	}
 
-	if (currentPagePath == route.path) {
-		handleHistoryAction(event, url, data);
-		return getPage.then(page => doShow(route, page, data));
+	let currentState = stack[stackPointer];
+
+	if (currentState.data.route.path == route.path) {
+		handleHistoryAction(event, url, data, currentState.page);
+		return getPage.then(page => doShow(page, data));
 	}
 
 	currentState.data.scrollY = window.scrollY;
-	handleHistoryAction({ action: 'replace' }, window.location, currentState.data);
-	return currentPage.hide(event).then(() =>
-		getPage.then(page => {
-			handleHistoryAction(event, url, data);
-			return doShow(route, page, data);
-		})
-		, e => {
-			manuallyAdjustingHistory = () => manuallyAdjustingHistory = false;
-			if (event.action == 'back')
-				history.go(1);
-			else if (event.action == 'fwd')
-				history.go(-1);
-		});
+
+	return Promise.all([
+			currentState.page.hide(event),
+			getPage
+		])
+			.then(results => results[1])
+			.then(page => {
+				handleHistoryAction(event, url, data, page);
+				return doShow(page, data);
+			}).catch(e => {
+				// TODO: what case is this?
+				manuallyAdjustingHistory = () => manuallyAdjustingHistory = false;
+				if (event.action == 'back')
+					history.go(1);
+				else if (event.action == 'fwd')
+					history.go(-1);
+			});
 }
 
-function doShow(route, page, data) {
+function doShow(page, data) {
 
 	window.scroll(0, 0);
-	currentPagePath = route.path;
-	currentPage = page;
 
-	return showLoading().then(() =>
-		currentPage.show(data)
-			.then(() => {
-				document.title = currentPage.title;
-			})
-			// todo: hide() should be passed an event object
-			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
-	)
+	return showLoading()
+		.then(() => page.show(data))
+		.then(() => document.title = page.title)
+		// todo: hide() should be passed an event object
+		.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide());
 }
 
-function handleHistoryAction(event, url, data) {
+function handleHistoryAction(event, url, data, page) {
 	if (event.action == 'push') {
-		currentState = { uid: ++currentState.uid, data };
-		window.history.pushState(currentState, null, url);
+		let newUid = stack[stackPointer].uid + 1;
+
+		window.history.pushState({ uid: newUid }, null, url);
+		
+		// remove future
+		stack.splice(stackPointer + 1, stack.length - stackPointer);
+
+		stack.push({ uid: newUid, data, page });
+		stackPointer++;
 	}
 	else if (event.action == 'replace') {
-		currentState = { uid: currentState.uid, data };
-		window.history.replaceState(currentState, null, url);
+		// TODO: this case may be buggy
+
+		let currentUid = stack[stackPointer].uid;
+		window.history.replaceState({ uid: currentUid }, null, url);
+		
+		stack.pop();
+		stack.push({ uid: currentUid, data, page });
 	}
+	else if(event.action == 'back')
+	{
+		stackPointer -= event.distance;
+	}
+	else if (event.action == 'fwd')
+	{
+		stackPointer += event.distance;
+	}	
 }
 
 function doNavigate(url, data) {
@@ -193,7 +222,7 @@ export function init(opts) {
 	// handle pages whose markup is already loaded in the page
 	for (var key in pageHash) {
 		if (pageHash[key].pageClass.existingDomSelector) {
-			let $html = document.$(pageHash[key].pageClass.existingDomSelector)
+			let $html = document.querySelector(pageHash[key].pageClass.existingDomSelector)
 			pageCache[pageHash[key].url] = {
 				$html: $html,
 				page: new (pageHash[key].pageClass)($html)
@@ -206,19 +235,18 @@ export function init(opts) {
 		console.error(e);
 		if (e instanceof PageShowError)
 			return showPage(e.url, e.data, { action: e.action || 'show' });
-	})
+	});
 
-	function handlePopstate(state, direction, distance) {
-		// todo: isnt this in the wrong place? should be further down...
-		currentState = state;
+	function handlePopstate(context, direction, distance) {
 
 		if (direction == 'back')
-			Object.assign(state.data, backData);
+			Object.assign(context.data, backData);
 		backData = {};
 
 		if (manuallyAdjustingHistory) {
 			manuallyAdjustingHistory({
-				state,
+				// TODO: rename
+				state: context,
 				direction,
 				distance,
 				path: window.location.pathname,
@@ -228,7 +256,7 @@ export function init(opts) {
 			return;
 		}
 
-		showPage(window.location.pathname + window.location.search + window.location.hash, state.data, { action: direction, distance }).catch(e => {
+		showPage(context.data.route.url, context.data, { action: direction, distance }).catch(e => {
 			console.error(e);
 			if (e instanceof PageShowError)
 				return showPage(e.url, e.data, { action: e.action || 'show' });
@@ -243,8 +271,8 @@ export function init(opts) {
 		}
 
 		// if we have a before-unload confirm to show
-		if (currentPage.beforeUnload && options.beforeUnload && handlingBeforeUnload === false) {
-			var interrupt = currentPage.beforeUnload();
+		if (stack[stackPointer].page.beforeUnload && options.beforeUnload && handlingBeforeUnload === false) {
+			var interrupt = stack[stackPointer].page.beforeUnload();
 			if (interrupt) {
 				handlingBeforeUnload = 'step1';
 
@@ -273,7 +301,7 @@ export function init(opts) {
 			return false;
 
 		// do the beforeUnload action, then...
-		options.beforeUnload(currentPage.beforeUnload()).then(result => {
+		options.beforeUnload(stack[stackPointer].page.beforeUnload()).then(result => {
 
 			// if the user confirmed, redo the original action
 			if (result) {
@@ -294,28 +322,38 @@ export function init(opts) {
 
 	// listen for browser navigations
 	window.addEventListener("popstate", e => {
-
 		var interrupted = handleBeforeUnloadPart2();
 		if (interrupted)
 			return;
 
-		let state = e.state || { uid: 0, data: {} };
-		lastNavigationDirection = state.uid > currentState.uid ? 'fwd' : 'back';
-		let distance = Math.abs(state.uid - currentState.uid);
+		let newUid = e.state?.uid || 0;
+		let previousUid = stack[stackPointer].uid;
+
+		lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
+		let distance = Math.abs(newUid - previousUid);
 
 		var interrupted = handleBeforeUnloadPart1();
 		if (interrupted)
 			return;
 
-		handlePopstate(state, lastNavigationDirection, distance);
+		var context = findContext(newUid);
+		handlePopstate(context, lastNavigationDirection, distance);
 	});
+}
+
+function findContext(uid){
+	for (var i = 0; i < stack.length; i++) {
+		if (stack[i].uid == uid)
+			return stack[i];
+	}
+	return null;
 }
 
 export function navigate(url, data, checkBeforeUnload) {
 
-	if (checkBeforeUnload === true && currentPage.beforeUnload && options.beforeUnload) {
+	if (checkBeforeUnload === true && stack[stackPointer].page.beforeUnload && options.beforeUnload) {
 
-		var interrupt = currentPage.beforeUnload();
+		var interrupt = stack[stackPointer].page.beforeUnload();
 		if (interrupt !== false) {
 			options.beforeUnload(interrupt).then(result => {
 				if (result)
@@ -329,11 +367,7 @@ export function navigate(url, data, checkBeforeUnload) {
 }
 
 export function update(opts) {
-	opts = Object.assign({
-		url: window.location.pathname + window.location.search + window.location.hash,
-		data: {}
-	}, opts);
-	handleHistoryAction({ action: 'replace', distance: 0 }, opts.url, opts.data);
+	state[statePointer].data = opts.data;
 }
 
 export function replace(url, data) {
@@ -350,23 +384,27 @@ export function back(data, checkBeforeUnload) {
 	history.go(-1);
 }
 
-export function rewind(method) {
-	// This is only safe if youre confident theres a hashless path in our history, else it may go offsite
-	if (method == 'drop-hash') {
-		let originalUrl = window.location.pathname + window.location.search + window.location.hash;
-		return new Promise((resolve) => {
-			manuallyAdjustingHistory = opts => {
-				if (!opts.hash) {
-					handleHistoryAction({ action: 'push', distance: 0 }, originalUrl, {});
-					manuallyAdjustingHistory = false;
-					resolve();
-				} else {
-					history.go(-1);
-				}
-			};
-			history.go(-1);
-		});
+export function printStack() {
+	console.log("Stack length: " + stack.length);
+	console.log("Stack pointer: " + stackPointer);
+	for(var i = 0; i < stack.length; i++)
+		console.log(stack[i]);
+}
+
+export function removeHistory(predicate)
+{
+	let states = [];
+	for(var i = 0; i < stack.length; i++)
+	{
+		if (predicate(stack[i]))
+			states.push(i);
 	}
 
-	return Promise.reject(new Error(`Unrecognised rewind method ${method}`))
+	if(states.length == 0)
+		return Promise.resolve();
+
+	return new Promise((resolve, reject) => {
+		manuallyAdjustingHistory = _ => {};
+		debugger;
+	});
 }
