@@ -223,6 +223,12 @@ export function init(opts) {
 	for (var key in pageHash) {
 		if (pageHash[key].pageClass.existingDomSelector) {
 			let $html = document.querySelector(pageHash[key].pageClass.existingDomSelector)
+			if(!$html)
+			{
+				console.error(`Unable to find DOM element '${pageHash[key].pageClass.existingDomSelector}' for page '${key}'`)
+				continue;
+			}
+
 			pageCache[pageHash[key].url] = {
 				$html: $html,
 				page: new (pageHash[key].pageClass)($html)
@@ -239,22 +245,14 @@ export function init(opts) {
 
 	function handlePopstate(context, direction, distance) {
 
+		if (manuallyAdjustingHistory) {
+			manuallyAdjustingHistory(context, { action: direction, distance });
+			return;
+		}
+
 		if (direction == 'back')
 			Object.assign(context.data, backData);
 		backData = {};
-
-		if (manuallyAdjustingHistory) {
-			manuallyAdjustingHistory({
-				// TODO: rename
-				state: context,
-				direction,
-				distance,
-				path: window.location.pathname,
-				search: window.location.search,
-				hash: window.location.hash
-			});
-			return;
-		}
 
 		showPage(context.data.route.url, context.data, { action: direction, distance }).catch(e => {
 			console.error(e);
@@ -393,18 +391,62 @@ export function printStack() {
 
 export function removeHistory(predicate)
 {
-	let states = [];
-	for(var i = 0; i < stack.length; i++)
+	let statesToKeep = [];
+
+	for (var i = 0; i < stack.length; i++)
 	{
-		if (predicate(stack[i]))
-			states.push(i);
+		if (!predicate(stack[i]))
+			statesToKeep.push(stack[i]);
 	}
 
-	if(states.length == 0)
+	// TODO: ensure we always have at least 1 state to keep - must/can this always be the current page?
+
+	if (statesToKeep.length == stack.length)
 		return Promise.resolve();
 
+
 	return new Promise((resolve, reject) => {
-		manuallyAdjustingHistory = _ => {};
-		debugger;
+
+
+		let backsToDo = stackPointer - 1;
+		let currentUid = -1;
+
+		//  TODO: handle stack pointer not being at the tail when this process starts
+
+		manuallyAdjustingHistory = _ => {
+			// rewind to the first history position
+			if(backsToDo > 0)
+			{
+				window.setTimeout(() => {
+					backsToDo--;
+					history.back();
+				}, 1);
+				return;
+			}
+
+			// reset the stack
+			stack = [];
+
+			for (var k = 0; k < statesToKeep.length; k++) {
+				let currentState = statesToKeep[k];
+				currentState.uid = ++currentUid;
+
+				if (k == 0)
+					window.history.replaceState({ uid: currentState.uid }, null, currentState.data.route.url);
+				else
+					window.history.pushState({ uid: currentState.uid }, null, currentState.data.route.url);
+				
+					// TODO: this doesnt seem to work when k=0
+				document.title = currentState.page.title;
+
+				stack.push(currentState);
+			}
+
+			stackPointer = stack.length - 1;
+
+			manuallyAdjustingHistory = false;
+		};
+
+		history.back();
 	});
 }
