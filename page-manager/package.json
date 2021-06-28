@@ -9,7 +9,7 @@
   "module": "./src/index.js",
   "type": "module",
   "scripts": {
-    "test": "node tests/tests.js"
+    "tests": "node tests/tests.js"
   },
   "author": "",
   "license": "ISC",
