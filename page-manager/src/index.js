@@ -29,6 +29,7 @@ var options = {
 				return $template;
 			});
 	},
+	pageInterrupt: route => null,
 	pageContainer: () => document.body,
 	prepareMarkup: $html => { },
 	loadingPageName: 'loading',
@@ -110,11 +111,13 @@ function showPage(url, data, event) {
 	};
 	data.event = event;
 
-	// TODO: abstract
-	if (route.pageClass.requireAuth && !firebase.auth().currentUser) {
+	let interrupt = options.pageInterrupt(route);
+	if(interrupt)
+	{
 		goal = { url, data };
-		return showPage(getPath('sign-in'), null, event);
+		return showPage(interrupt.url, null, event);
 	}
+	
 
 	var getPage = showLoading().then(() => {
 		if (pageCache[route.path])

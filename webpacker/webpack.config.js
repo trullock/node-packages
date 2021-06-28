@@ -41,10 +41,9 @@ export function generateHtmlPlugins(templateDir, outputSubfolder) {
 	}).filter(x => x != null);
 }
 
-export default async (mode) => {
+export default async (mode, pagesPath) => {
 
-	const appPagePlugins = generateHtmlPlugins(PATHS.appPages, 'app')
-	const landingPagePlugins = generateHtmlPlugins(PATHS.landingPages, 'landing')
+	const pagePlugins = generateHtmlPlugins(pagesPath, 'app')
 
 	var isDevelopment = mode === 'development';
 
