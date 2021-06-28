@@ -1,15 +1,13 @@
 import HtmlWebpackPlugin from 'html-webpack-plugin';
-import PurgecssPlugin from 'purgecss-webpack-plugin';
+//import PurgecssPlugin from 'purgecss-webpack-plugin';
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
-import purgecssFromHtml from 'purgecss-from-html';
+//import purgecssFromHtml from 'purgecss-from-html';
 import fs from "fs";
 import path from "path";
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // both lines needed to init page scripts
-import * as appIndex from './src/app/js/app/index.js'
-import * as landingIndex from './src/landing/js/landing/index.js'
 import { pages } from '@trullock/page-manager'
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
