@@ -1,8 +1,9 @@
 {
 	"name": "@trullock/webpacker",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "",
 	"main": "build.js",
+	"type:": "module",
 	"scripts": {
 		"start": "node build.js watch",
 		"build": "node build.js production"

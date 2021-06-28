@@ -35,7 +35,6 @@ function handleError(err, stats){
 export function run(mode) {
 
 	if (mode == 'development') {
-		var watching;
 
 		function startWatching() {
 			watching = compiler.watch({
