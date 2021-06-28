@@ -20,7 +20,7 @@ const PATHS = {
 
 
 
-function generateHtmlPlugins(templateDir, outputSubfolder) {
+export function generateHtmlPlugins(templateDir, outputSubfolder) {
 	const templateFiles = fs.readdirSync(path.resolve(__dirname, templateDir))
 	return templateFiles.map(filename => {
 		const parts = filename.split('.');
