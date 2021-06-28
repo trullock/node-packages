@@ -9,6 +9,9 @@
 	},
 	"author": "trullock",
 	"license": "ISC",
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@babel/core": "^7.14.6",
 		"@babel/plugin-proposal-class-properties": "^7.14.5",
