@@ -133,7 +133,7 @@ export default function(language){
 
 
 	HTMLFormElement.prototype.validate = function () {
-		let $inputs = [...this.$$('input, select, textarea')];
+		let $inputs = [...this.querySelectorAll('input, select, textarea')];
 		let valid = $inputs.reduce((agg, $input) => $input.validate() && agg, true);
 
 		if(!valid)
@@ -145,7 +145,7 @@ export default function(language){
 	let formReset = HTMLFormElement.prototype.reset;
 	HTMLFormElement.prototype.reset = function () {
 		formReset.call(this);
-		var $inputs = this.$$('input, select, textarea');
+		var $inputs = this.querySelectorAll('input, select, textarea');
 		return $inputs.forEach($i => {
 			$i.resetValidity();
 		})

@@ -33,6 +33,8 @@ const handler = {
 	
 	get: function(obj, prop) {
 
+		// TODO: handle prop being Symbol(Symbol.iterator)
+
 		if(obj instanceof NodeList)
 		{
 			obj = [...obj];
