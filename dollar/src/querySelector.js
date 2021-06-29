@@ -19,9 +19,6 @@
 HTMLElement.prototype.$ = function (selector) {
 	let nodeList = this.querySelectorAll(selector);
 	let p = new Proxy(nodeList, handler);
-	p.selector = selector;
-	p.elements = nodeList.length;
-	p.toString = () => 'DollarProxy `' + selector + '`: ' + p.elements + ' elements';
 	return p;
 }
 
@@ -33,9 +30,6 @@ HTMLElement.prototype.$ = function (selector) {
 HTMLDocument.prototype.$ = function (selector) {
 	let nodeList = this.querySelectorAll(selector);
 	let p = new Proxy(nodeList, handler);
-	p.selector = selector;
-	p.elements = nodeList.length;
-	p.toString = () => 'DollarProxy `' + selector + '`: ' + p.elements + ' elements';
 	return p;
 }
 
