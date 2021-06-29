@@ -1,7 +1,30 @@
+// HTMLElement.prototype.$$ = function (selector) {
+// 	return [...this.querySelectorAll(selector)];
+// }
+// HTMLElement.prototype.$ = function (selector) {
+// 	return this.querySelector(selector);
+// }
+// HTMLDocument.prototype.$$ = function (selector) {
+// 	return [...this.querySelectorAll(selector)];
+// }
+// HTMLDocument.prototype.$ = function (selector) {
+// 	return this.querySelector(selector);
+// }
+
+/**
+ * Selects 0, 1 or more elements by css selector
+ * @param {string} selector 
+ * @returns a Dollar proxy object
+ */
 HTMLElement.prototype.$$ = function (selector) {
 	return new Proxy(this.querySelectorAll(selector));
 }
 
+/**
+ * Selects 0, 1 or more elements by css selector
+ * @param {string} selector
+ * @returns a Dollar proxy object
+ */
 HTMLDocument.prototype.$$ = function (selector) {
 	return new Proxy(this.querySelectorAll(selector), handler);
 }
