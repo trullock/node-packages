@@ -60,7 +60,7 @@ const handler = {
 			return function() {
 				if(obj.length > 1)
 					return obj.map(o => o[prop].apply(o, arguments));	
-				return obj[0][prop].apply(obj, arguments);
+				return obj[0][prop].apply(obj[0], arguments);
 			};
 		}
 
