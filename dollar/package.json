@@ -1,6 +1,6 @@
 {
   "name": "@trullock/dollar",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "HTML extensions for DOM selection and manipulation",
   "exports": {
     ".": "./src/index.js"

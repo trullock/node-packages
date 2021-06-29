@@ -22,6 +22,7 @@ HTMLElement.prototype.$ = function (selector) {
 	p.selector = selector;
 	p.elements = nodeList.length;
 	p.toString = () => 'DollarProxy `' + selector + '`: ' + p.elements + ' elements';
+	return p;
 }
 
 /**
@@ -35,6 +36,7 @@ HTMLDocument.prototype.$ = function (selector) {
 	p.selector = selector;
 	p.elements = nodeList.length;
 	p.toString = () => 'DollarProxy `' + selector + '`: ' + p.elements + ' elements';
+	return p;
 }
 
 const handler = {
