@@ -17,7 +17,11 @@
  * @returns a Dollar proxy object
  */
 HTMLElement.prototype.$ = function (selector) {
-	return new Proxy(this.querySelectorAll(selector), handler);
+	let nodeList = this.querySelectorAll(selector);
+	let p = new Proxy(nodeList, handler);
+	p.selector = selector;
+	p.elements = nodeList.length;
+	p.toString = 'DollarProxy `' + selector + '`: ' + p.elements + ' elements';
 }
 
 /**
@@ -26,7 +30,11 @@ HTMLElement.prototype.$ = function (selector) {
  * @returns a Dollar proxy object
  */
 HTMLDocument.prototype.$ = function (selector) {
-	return new Proxy(this.querySelectorAll(selector), handler);
+	let nodeList = this.querySelectorAll(selector);
+	let p = new Proxy(nodeList, handler);
+	p.selector = selector;
+	p.elements = nodeList.length;
+	p.toString = 'DollarProxy `' + selector + '`: ' + p.elements + ' elements';
 }
 
 const handler = {
