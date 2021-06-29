@@ -69,11 +69,12 @@ const handler = {
 			if(Array.prototype[prop] !== undefined)
 			{
 				obj[prop] = value;
-				return;
+				return true;
 			}	
 		}
 
 		obj.map(o => o[prop] = value);
+		return true;
 	},
 
 	apply: function(obj, thisArg, argumentsList) {
