@@ -63,8 +63,10 @@ const handler = {
 				return obj[prop].apply(obj, arguments);
 			};
 		}
-
-		return obj.map(o => o[prop]);
+		
+		if (obj.length > 1)
+			return obj.map(o => o[prop]);
+		return obj[prop];
 	},
 
 	set: function(obj, prop, value) {
