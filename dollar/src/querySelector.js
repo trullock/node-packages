@@ -16,8 +16,8 @@
  * @param {string} selector 
  * @returns a Dollar proxy object
  */
-HTMLElement.prototype.$$ = function (selector) {
-	return new Proxy(this.querySelectorAll(selector));
+HTMLElement.prototype.$ = function (selector) {
+	return new Proxy(this.querySelectorAll(selector), handler);
 }
 
 /**
@@ -25,7 +25,7 @@ HTMLElement.prototype.$$ = function (selector) {
  * @param {string} selector
  * @returns a Dollar proxy object
  */
-HTMLDocument.prototype.$$ = function (selector) {
+HTMLDocument.prototype.$ = function (selector) {
 	return new Proxy(this.querySelectorAll(selector), handler);
 }
 
