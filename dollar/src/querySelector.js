@@ -58,7 +58,9 @@ const handler = {
 		if(type == 'function')
 		{
 			return function() {
-				obj.map(o => o[prop].apply(o, arguments));	
+				if(obj.length > 1)
+					return obj.map(o => o[prop].apply(o, arguments));	
+				return obj[prop].apply(obj, arguments);
 			};
 		}
 
