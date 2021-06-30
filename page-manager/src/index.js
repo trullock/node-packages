@@ -453,3 +453,11 @@ export function removeHistory(predicate)
 		history.back();
 	});
 }
+
+export function purgeCache() {
+	for (const path in pageCache)
+	{
+		pageCache[path].destroy && pageCache[path].destroy();
+		delete pageCache[path];
+	}
+}
