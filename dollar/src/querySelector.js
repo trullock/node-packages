@@ -54,6 +54,9 @@ const handler = {
 		if(obj.length === 0)
 			return null;
 
+		if (obj[0] == null)
+			return null;
+
 		var type = typeof obj[0][prop];
 
 		if(type == 'object')
