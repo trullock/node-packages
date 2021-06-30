@@ -457,7 +457,8 @@ export function removeHistory(predicate)
 export function purgeCache() {
 	for (const path in pageCache)
 	{
-		pageCache[path].destroy && pageCache[path].destroy();
+		pageCache[path].page.destroy && pageCache[path].page.destroy();
+		pageCache[path].$html.remove();
 		delete pageCache[path];
 	}
 }
