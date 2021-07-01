@@ -155,14 +155,15 @@ function showPage(url, data, event) {
 			.then(page => {
 				handleHistoryAction(event, url, data, page);
 				return doShow(page, data);
-			}).catch(e => {
-				// TODO: what case is this?
-				manuallyAdjustingHistory = () => manuallyAdjustingHistory = false;
-				if (event.action == 'back')
-					history.go(1);
-				else if (event.action == 'fwd')
-					history.go(-1);
 			});
+			// .catch(e => {
+			// 	// TODO: what case is this?
+			// 	manuallyAdjustingHistory = () => manuallyAdjustingHistory = false;
+			// 	if (event.action == 'back')
+			// 		history.go(1);
+			// 	else if (event.action == 'fwd')
+			// 		history.go(-1);
+			// });
 }
 
 function doShow(page, data) {
