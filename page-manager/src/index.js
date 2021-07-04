@@ -127,12 +127,22 @@ function showPage(url, data, event) {
 	});
 
 	// handle initial page
-	if (stackPointer == -1)
+	if (event.action == 'load')
 	{
 		return getPage
 					.then(page => {
-						stack.push({ uid: 0, data, page });
-						stackPointer = 0;
+						// clean initial load
+						if(stackPointer == -1)
+						{
+							stack.push({ uid: 0, data, page });
+							stackPointer = 0;
+						}
+						// page refresh
+						else
+						{
+							stack[stackPointer].page = page;
+							stack[stackPointer].data = data;
+						}
 						return page;
 					})
 					.then(page => doShow(page, data));
@@ -174,7 +184,9 @@ function doShow(page, data) {
 		.then(() => page.show(data))
 		.then(() => document.title = page.title)
 		// todo: hide() should be passed an event object
-		.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide());
+		.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
+		// return page
+		.then(() => page);
 }
 
 function handleHistoryAction(event, url, data, page) {
@@ -219,9 +231,33 @@ function doNavigate(url, data) {
 	return showPage(url, data, { action: 'push', distance: 0 });
 }
 
+function storageAvailable() {
+    try {
+        var x = '__storage_test__';
+        window.sessionStorage.setItem(x, x);
+        window.sessionStorage.removeItem(x);
+        return true;
+    }
+    catch(e) {
+        return false;
+    }
+}
+
 export function init(opts) {
 
 	Object.assign(options, opts);
+
+	if(storageAvailable())
+	{
+		let storedStack = window.sessionStorage.getItem("stack");
+		if(storedStack)
+		{
+			storedStack = JSON.parse(storedStack);
+			stack = storedStack.stack;
+			stackPointer = storedStack.stackPointer;
+			window.sessionStorage.removeItem("stack");
+		}
+	}
 
 	// handle pages whose markup is already loaded in the page
 	for (var key in pageHash) {
@@ -262,7 +298,10 @@ export function init(opts) {
 			console.error(e);
 			if (e instanceof PageShowError)
 				return showPage(e.url, e.data, { action: e.action || 'show' });
-		});
+		}).then(page => {
+			// set page as it can be missing in the case of refreshes
+			context.page = page;
+		})
 	}
 
 	function handleBeforeUnloadPart1() {
@@ -341,6 +380,22 @@ export function init(opts) {
 		var context = findContext(newUid);
 		handlePopstate(context, lastNavigationDirection, distance);
 	});
+
+	if(storageAvailable())
+	{
+		window.addEventListener("beforeunload", () => {
+
+			let stackToSerialize = stack.map(s => ({
+				uid: s.uid,
+				data: s.data
+			}));
+			let stackToStore = {
+				stack: stackToSerialize,
+				stackPointer
+			}
+			window.sessionStorage.setItem('stack', JSON.stringify(stackToStore));
+		});
+	}
 }
 
 function findContext(uid){
