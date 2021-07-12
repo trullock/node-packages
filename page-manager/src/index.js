@@ -118,7 +118,6 @@ function showPage(url, data, event) {
 		return showPage(interrupt.url, null, event);
 	}
 	
-
 	var getPage = showLoading().then(() => {
 		if (pageCache[route.path])
 			return pageCache[route.path].page;
