@@ -9,6 +9,7 @@ function intercept(selector)
 				prop,
 				action
 			})
+			return true;
 		}
 	});
 }
