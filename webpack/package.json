@@ -1,7 +1,7 @@
 {
-  "name": "@trullock/firebase",
+  "name": "@trullock/webpack",
   "version": "0.1.1",
-  "description": "Helpers for Firebase",
+  "description": "Helpers for Webpack",
   "exports": {
     ".": "./src/index.js"
   },

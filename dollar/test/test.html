@@ -22,18 +22,34 @@
             <li>Three</li>
         </ol>
 
-        <script src="../src/proxy.js"></script>
-        <script>
-            document.$$('ul li').classList.add('red');
-            document.$$('ul li')[0].classList.add('green');
-            document.$$('ol li').classList.add('green');
-            document.$$('input').value = "test";
-            document.$$('input').style.color = 'green';
-            document.$$('input').map($i => {
-                $i.style.textAlign = 'right';
-            })
+		<input type="datetime-local" name="datetime">
 
-            console.log(document.$$('input').value);
+        <script src="../src/index.js" type="module"></script>
+        <script defer>
+			document.addEventListener('DOMContentLoaded', () => {
+				// document.$('ul li').classList.add('red');
+				// document.$('ul li')[0].classList.add('green');
+				// document.$('ol li').classList.add('green');
+				// document.$('input').value = "test";
+				// document.$('input').style.color = 'green';
+				// document.$('input').map($i => {
+				// 	$i.style.textAlign = 'right';
+				// });
+
+				document.$.intercept('input[type=datetime-local]').value = value => {
+					if(!(value instanceof Date))
+						return value;
+					
+					value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
+					return value.toISOString().slice(0, 16);
+				}
+
+				document.$('[name=datetime]').value = new Date()
+
+
+				//console.log(document.$('input').value);
+			})
+            
         </script>
     </body>
 </html>

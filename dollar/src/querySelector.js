@@ -1,15 +1,17 @@
-// HTMLElement.prototype.$$ = function (selector) {
-// 	return [...this.querySelectorAll(selector)];
-// }
-// HTMLElement.prototype.$ = function (selector) {
-// 	return this.querySelector(selector);
-// }
-// HTMLDocument.prototype.$$ = function (selector) {
-// 	return [...this.querySelectorAll(selector)];
-// }
-// HTMLDocument.prototype.$ = function (selector) {
-// 	return this.querySelector(selector);
-// }
+let setInterceptors = [];
+
+function intercept(selector)
+{
+	return new Proxy({}, {
+		set: function (obj, prop, action) {
+			setInterceptors.push({
+				selector,
+				prop,
+				action
+			})
+		}
+	});
+}
 
 /**
  * Selects 0, 1 or more elements by css selector
@@ -21,6 +23,7 @@ HTMLElement.prototype.$ = function (selector) {
 	let p = new Proxy(nodeList, handler);
 	return p;
 }
+HTMLElement.prototype.$.intercept = intercept;
 
 /**
  * Selects 0, 1 or more elements by css selector
@@ -32,6 +35,7 @@ HTMLDocument.prototype.$ = function (selector) {
 	let p = new Proxy(nodeList, handler);
 	return p;
 }
+HTMLDocument.prototype.$.intercept = intercept;
 
 const handler = {
 	
@@ -56,7 +60,7 @@ const handler = {
 
 		if (obj[0] == null)
 			return null;
-
+		
 		var type = typeof obj[0][prop];
 
 		if(type == 'object')
@@ -89,7 +93,19 @@ const handler = {
 			}	
 		}
 
-		obj.map(o => o[prop] = value);
+		obj.map(o => {
+			let inters = setInterceptors.filter(i => prop == i.prop && o.matches(i.selector));
+			if(inters.length)
+			{
+				let valueToSet = value;
+				inters.forEach(i => {
+					valueToSet = i.action(value)
+				})
+				o[prop] = valueToSet;
+			}
+			else
+				o[prop] = value;
+		});
 		return true;
 	},
 
