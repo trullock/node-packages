@@ -40,12 +40,15 @@ var options = {
 
 export const pages = pageHash;
 
-export function registerPage(name, route, pageClass) {
-	router.addRoute(name, route, pageClass);
+export function registerPage(namedRoutes, pageClass) {
 
-	pageHash[name] = {
-		url: route,
-		pageClass: pageClass
+	for (const [name, route] of Object.entries(namedRoutes)) {
+		router.addRoute(name, route, pageClass);
+
+		pageHash[name] = {
+				url: route,
+				pageClass: pageClass
+		}
 	}
 
 	return pageClass;
