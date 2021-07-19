@@ -7,6 +7,10 @@
     "./pageshowerror": "./src/pageshowerror.js"
   },
   "module": "./src/index.js",
+  "files": [
+	"./src/index.js",
+	"./src/pageshowerror.js"
+  ],
   "type": "module",
   "scripts": {
     "tests": "node tests/tests.js"
