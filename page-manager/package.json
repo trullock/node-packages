@@ -1,16 +1,12 @@
 {
   "name": "@trullock/page-manager",
-  "version": "0.5.0",
+  "version": "0.6.2",
   "description": "Single page app manager",
   "exports": {
     ".": "./src/index.js",
     "./pageshowerror": "./src/pageshowerror.js"
   },
   "module": "./src/index.js",
-  "files": [
-	"./src/index.js",
-	"./src/pageshowerror.js"
-  ],
   "type": "module",
   "scripts": {
     "tests": "node tests/tests.js"

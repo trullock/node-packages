@@ -1,13 +1,14 @@
-let setInterceptors = [];
+let interceptors = [];
 
 function intercept(selector)
 {
 	return new Proxy({}, {
-		set: function (obj, prop, action) {
-			setInterceptors.push({
+		set: function (obj, prop, getterAndSetter) {
+			interceptors.push({
 				selector,
 				prop,
-				action
+				getter: getterAndSetter.get,
+				setter: getterAndSetter.set
 			})
 			return true;
 		}
@@ -24,6 +25,10 @@ HTMLElement.prototype.$ = function (selector) {
 	let p = new Proxy(nodeList, handler);
 	return p;
 }
+
+/**
+ * Provides interceptors for getters and setters of proxied properties
+ */
 HTMLElement.prototype.$.intercept = intercept;
 
 /**
@@ -48,6 +53,9 @@ const handler = {
 		{
 			obj = [...obj];
 
+			if (prop == Symbol.iterator)
+				return obj[Symbol.iterator];
+
 			// handle $$('selector')[i]
 			if(!isNaN(prop))
 				return obj[prop];
@@ -63,8 +71,8 @@ const handler = {
 			return null;
 		
 		var type = typeof obj[0][prop];
-
-		if(type == 'object')
+		
+		if(type == 'object' && type.constructor.toString().indexOf(' Object()') > -1)
 			return new Proxy(obj.map(o => o[prop]), handler);
 		
 		if(type == 'function')
@@ -76,9 +84,22 @@ const handler = {
 			};
 		}
 
-		if (obj.length > 1)
-			return obj.map(o => o[prop]);
-		return obj[0][prop];
+		let results = obj.map(o => {
+			let inters = interceptors.filter(i => prop == i.prop && i.getter && o.matches(i.selector));
+			if (inters.length) {
+				let valueToGet = o[prop];
+				inters.forEach(i => {
+					valueToGet = i.getter(valueToGet)
+				})
+				return valueToGet;
+			}
+			else
+				return o[prop];
+		})
+
+		if (results.length > 1)
+			return results;
+		return results[0];
 	},
 
 	set: function(obj, prop, value) {
@@ -95,12 +116,12 @@ const handler = {
 		}
 
 		obj.map(o => {
-			let inters = setInterceptors.filter(i => prop == i.prop && o.matches(i.selector));
+			let inters = interceptors.filter(i => prop == i.prop && i.setter && o.matches(i.selector));
 			if(inters.length)
 			{
 				let valueToSet = value;
 				inters.forEach(i => {
-					valueToSet = i.action(value)
+					valueToSet = i.setter(valueToSet)
 				})
 				o[prop] = valueToSet;
 			}
@@ -111,7 +132,6 @@ const handler = {
 	},
 
 	apply: function(obj, thisArg, argumentsList) {
-		debugger;
 		obj.map(o => o.apply(thisArg, argumentsList));
 	}
 };

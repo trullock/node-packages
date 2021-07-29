@@ -23,33 +23,52 @@
         </ol>
 
 		<input type="datetime-local" name="datetime">
+		<input type="date" name="date">
+		<input type="time" name="time">
 		<input type="text" id="prototypeTest">
+		<input type="file" id="files">
 
         <script src="../src/index.js" type="module"></script>
         <script defer>
 			document.addEventListener('DOMContentLoaded', () => {
-				document.$('ul li').classList.add('red');
-				document.$('ul li')[0].classList.add('green');
-				document.$('ol li').classList.add('green');
-				document.$('input').value = "test";
-				document.$('input').style.color = 'green';
-				document.$('input').map($i => {
-					$i.style.textAlign = 'right';
-				});
+				// document.$('ul li').classList.add('red');
+				// document.$('ul li')[0].classList.add('green');
+				// document.$('ol li').classList.add('green');
+				// document.$('input').value = "test";
+				// document.$('input').style.color = 'green';
+				// document.$('input').map($i => {
+				// 	$i.style.textAlign = 'right';
+				// });
 
-				/// Value reading test
-				console.log(document.$('input').value);
+				// /// Value reading test
+				// console.log(document.$('input').value);
+
+
+				// [...document.$('li')].forEach($li => $li.setAttribute('data-test', 'test'));
+
+				let files = document.$('[type=file]').files;
+				debugger;
+
 
 				/// Setter interceptor test
-				document.$.intercept('input[type=datetime-local]').value = value => {
-					if(!(value instanceof Date))
-						return value;
-					
-					value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
-					return value.toISOString().slice(0, 16);
-				}
-				document.$('[name=datetime]').value = new Date()
+				document.$.intercept('input[type=datetime-local]').value = {
+					get: value => {
+						let parsed = Date.parse(value);
+						let datetime = new Date();
+						datetime.setTime(parsed);
+						return datetime;
+					},
+					set: value => {
+						if (!(value instanceof Date))
+							return value;
 
+						value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
+						return value.toISOString().slice(0, 16);
+					}
+				}
+
+				document.$('[name=datetime]').value = new Date()
+				console.log(document.$('[name=datetime]').value);
 
 				/// Prototype passthrough test
 				HTMLInputElement.prototype.test = function() {

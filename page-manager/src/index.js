@@ -46,8 +46,8 @@ export function registerPage(namedRoutes, pageClass) {
 		router.addRoute(name, route, pageClass);
 
 		pageHash[name] = {
-				url: route,
-				pageClass: pageClass
+			url: route,
+			pageClass: pageClass
 		}
 	}
 
