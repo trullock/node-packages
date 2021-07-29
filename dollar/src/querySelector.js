@@ -82,7 +82,7 @@ const handler = {
 		{
 			return function() {
 				let args = [...arguments].map(a => {
-					if (a.__isDollarProxy === true)
+					if (a != null && a.__isDollarProxy === true)
 					{
 						if(a.length == 0)
 							return null;
@@ -145,9 +145,5 @@ const handler = {
 				o[prop] = value;
 		});
 		return true;
-	},
-
-	apply: function(obj, thisArg, argumentsList) {
-		obj.map(o => o.apply(thisArg, argumentsList));
 	}
 };
