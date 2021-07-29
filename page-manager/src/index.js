@@ -440,10 +440,6 @@ export function navigate(url, data, checkBeforeUnload) {
 	doNavigate(url, data);
 }
 
-export function update(opts) {
-	state[statePointer].data = opts.data;
-}
-
 export function replace(url, data) {
 	return showPage(url, data, { action: 'replace', distance: 0 });
 }

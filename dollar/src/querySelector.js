@@ -47,6 +47,9 @@ const handler = {
 	
 	get: function(obj, prop) {
 
+		if(prop === '__isDollarProxy')
+			return true;
+
 		// TODO: handle prop being Symbol(Symbol.iterator)
 
 		if(obj instanceof NodeList)
@@ -78,9 +81,22 @@ const handler = {
 		if(type == 'function')
 		{
 			return function() {
+				let args = [...arguments].map(a => {
+					if (a.__isDollarProxy === true)
+					{
+						if(a.length == 0)
+							return null;
+
+						let unwrapped = [...a];
+						if(unwrapped.length == 1)
+							return unwrapped[0];
+						return unwrapped;
+					};
+					return a;
+				})
 				if(obj.length > 1)
-					return obj.map(o => o[prop].apply(o, arguments));	
-				return obj[0][prop].apply(obj[0], arguments);
+					return obj.map(o => o[prop].apply(o, args));	
+				return obj[0][prop].apply(obj[0], args);
 			};
 		}
 

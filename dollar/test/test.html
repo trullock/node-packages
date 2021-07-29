@@ -22,6 +22,9 @@
             <li>Three</li>
         </ol>
 
+		<span class="appendA">A</span>
+		<span class="appendB">B</span>
+
 		<input type="datetime-local" name="datetime">
 		<input type="date" name="date">
 		<input type="time" name="time">
@@ -44,11 +47,11 @@
 				// console.log(document.$('input').value);
 
 
-				// [...document.$('li')].forEach($li => $li.setAttribute('data-test', 'test'));
-
+				[...document.$('li')].forEach($li => $li.setAttribute('data-test', 'test'));
 				let files = document.$('[type=file]').files;
-				debugger;
+				
 
+				document.$('.appendA').appendChild(document.$('.appendB'));
 
 				/// Setter interceptor test
 				document.$.intercept('input[type=datetime-local]').value = {
