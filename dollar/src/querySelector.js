@@ -72,7 +72,7 @@ const handler = {
 		
 		var type = typeof obj[0][prop];
 		
-		if(type == 'object' && type.constructor.toString().indexOf(' Object()') > -1)
+		if(type == 'object' && (obj.length > 1 || type.constructor.toString().indexOf(' Object()') > -1))
 			return new Proxy(obj.map(o => o[prop]), handler);
 		
 		if(type == 'function')

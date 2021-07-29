@@ -40,7 +40,22 @@ var options = {
 
 export const pages = pageHash;
 
-export function registerPage(namedRoutes, pageClass) {
+export function registerPage(argA, argB, argC) {
+
+	let namedRoutes = null, 
+		pageClass = null;
+
+	if(argC == undefined)
+	{
+		namedRoutes = argA;
+		pageClass = argB;
+	} else {
+		namedRoutes = {
+			[argA]: argB
+		};
+		pageClass = argC;
+	}
+	
 
 	for (const [name, route] of Object.entries(namedRoutes)) {
 		router.addRoute(name, route, pageClass);
