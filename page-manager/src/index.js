@@ -14,7 +14,7 @@ var lastNavigationDirection = null;
 var goal = null;
 var backData = {};
 var options = {
-	fetchPath: route => '/pages/' + route.routeName + '.html',
+	fetchPath: route => '/pages/' + (route.pageClass.constructor.htmlName || route.routeName) + '.html',
 	fetchPageTemplate: route => {
 		return fetch(options.fetchPath(route))
 			.then(r => r.text())
