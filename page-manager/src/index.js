@@ -286,9 +286,17 @@ export function init(opts) {
 				continue;
 			}
 
-			pageCache[pageHash[key].url] = {
-				$html: $html,
-				page: new (pageHash[key].pageClass)($html)
+			// if the route is parameterised
+			if(router.routesByName[key]._paramsIds.length > 1)
+			{
+				pageTemplateCache[router.routesByName[key]._pattern] = $html;
+			}
+			else 
+			{
+				pageCache[pageHash[key].url] = {
+					$html: $html,
+					page: new (pageHash[key].pageClass)($html)
+				}
 			}
 		}
 	}
