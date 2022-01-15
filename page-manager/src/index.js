@@ -14,7 +14,7 @@ var lastNavigationDirection = null;
 var goal = null;
 var backData = {};
 var options = {
-	fetchPath: route => '/pages/' + (route.pageClass.constructor.htmlName || route.routeName) + '.html',
+	fetchPath: route => '/pages/' + route.routeName + '.html',
 	fetchPageTemplate: route => {
 		return fetch(options.fetchPath(route))
 			.then(r => r.text())
@@ -74,6 +74,14 @@ export function getPath(name, values) {
 	if (values?.hash)
 		url += '#' + values.hash;
 	return url;
+}
+
+// TODO: 404 and error too?
+function initLoading()
+{
+	var page = pageHash[options.loadingPageName];
+	var route = router.parse(page.url);
+	return loadPage(route, {});
 }
 
 function showLoading() {
@@ -169,7 +177,7 @@ function showPage(url, data, event) {
 
 	if (currentState.data.route.path == route.path) {
 		handleHistoryAction(event, url, data, currentState.page);
-		return getPage.then(page => doShow(page, data));
+		return getPage.then(page => doUpdate(page, data));
 	}
 
 	currentState.data.scrollY = window.scrollY;
@@ -197,14 +205,25 @@ function doShow(page, data) {
 
 	window.scroll(0, 0);
 
-	return showLoading()
-		.then(() => page.show(data))
-		.then(() => document.title = page.title)
-		// todo: hide() should be passed an event object
-		.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
-		// return page
-		.then(() => page);
+	return page.show(data)
+			.then(() => document.title = page.title)
+			// todo: hide() should be passed an event object
+			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
+			// return page
+			.then(() => page);
 }
+
+
+function doUpdate(page, data) {
+
+	return page.update(data)
+			.then(() => document.title = page.title)
+			// todo: hide() should be passed an event object
+			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
+			// return page
+			.then(() => page);
+}
+
 
 function handleHistoryAction(event, url, data, page) {
 	if (event.action == 'push') {
@@ -249,6 +268,7 @@ function doNavigate(url, data) {
 }
 
 function storageAvailable() {
+	return false;
     try {
         var x = '__storage_test__';
         window.sessionStorage.setItem(x, x);
@@ -260,7 +280,7 @@ function storageAvailable() {
     }
 }
 
-export function init(opts) {
+export async function init(opts) {
 
 	Object.assign(options, opts);
 
@@ -285,22 +305,15 @@ export function init(opts) {
 				console.error(`Unable to find DOM element '${pageHash[key].pageClass.existingDomSelector}' for page '${key}'`)
 				continue;
 			}
-
-			// if the route is parameterised
-			if(router.routesByName[key]._paramsIds.length > 1)
-			{
-				pageTemplateCache[router.routesByName[key]._pattern] = $html;
-			}
-			else 
-			{
-				pageCache[pageHash[key].url] = {
-					$html: $html,
-					page: new (pageHash[key].pageClass)($html)
-				}
-			}
+			
+			// TODO: this is inefficient for non parameterised routes. There will always be HTML in memory and then copied for the page once loaded
+			pageTemplateCache[router.routesByName[key]._pattern] = $html;
+			$html.parentElement.removeChild($html);	
 		}
 	}
 
+	await initLoading();
+	
 	// set initial page
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
 		console.error(e);
@@ -431,7 +444,24 @@ function findContext(uid){
 	return null;
 }
 
+function expandOnlyHash(url)
+{
+	if(url.startsWith('#'))
+	{
+		let currentState = stack[stackPointer];
+		let currentUrl = currentState.data.route.url;
+		let hashIndex = currentUrl.indexOf('#');
+		if(hashIndex > -1)
+			return currentUrl.substr(0, hashIndex);
+		return currentUrl + url;
+	}
+
+	return url;
+}
+
 export function navigate(url, data, checkBeforeUnload) {
+
+	url = expandOnlyHash(url);
 
 	if (checkBeforeUnload === true && stack[stackPointer].page.beforeUnload && options.beforeUnload) {
 
@@ -449,6 +479,7 @@ export function navigate(url, data, checkBeforeUnload) {
 }
 
 export function replace(url, data) {
+	url = expandOnlyHash(url);
 	return showPage(url, data, { action: 'replace', distance: 0 });
 }
 
@@ -472,10 +503,9 @@ export function printStack() {
 export function removeHistory(predicate)
 {
 	let statesToKeep = [];
-
 	for (var i = 0; i < stack.length; i++)
 	{
-		if (!predicate(stack[i]))
+		if (!predicate(stack[i], i))
 			statesToKeep.push(stack[i]);
 	}
 
