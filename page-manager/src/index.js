@@ -122,7 +122,11 @@ function showPage(url, data, event) {
 	var route = router.parse(url);
 	if (route == null) {
 		console.error(`Can't find page: '${url}'`);
-		return Promise.reject(new PageShowError(pageHash[options.error404PageName].url, `Can't find page: '${url}'`, {}, 'replace'));
+		let page404 = pageHash[options.error404PageName];
+		if(!page404)
+			return Promise.reject(new PageShowError('/', `Can't find page: '${url}'. Also can't find 404 page: '${options.error404PageName}'`, {}, 'replace'));
+
+		return Promise.reject(new PageShowError(page404.url, `Can't find page: '${url}'`, {}, 'replace'));
 	}
 
 	data = data || {};
@@ -318,7 +322,7 @@ export async function init(opts) {
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
 		console.error(e);
 		if (e instanceof PageShowError)
-			return showPage(e.url, e.data, { action: e.action || 'show' });
+			return showPage(e.url, e.data, { action: stackPointer == -1 ? 'load' : e.action || 'show' });
 	});
 
 	function handlePopstate(context, direction, distance) {
