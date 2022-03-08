@@ -47,8 +47,16 @@
 				// console.log(document.$('input').value);
 
 
+				if(!document.$('.appendA').equals(document.$('.appendA')))
+					console.error("Dollars not equal!");
+
+					
+				if(!document.$('span').equals(document.$('span')))
+					console.error("Dollars not equal!");
+
 				[...document.$('li')].forEach($li => $li.setAttribute('data-test', 'test'));
 				let files = document.$('[type=file]').files;
+
 				
 
 				document.$('.appendA').appendChild(document.$('.appendB'));

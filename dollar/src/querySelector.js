@@ -36,12 +36,41 @@ HTMLElement.prototype.$.intercept = intercept;
  * @param {string} selector
  * @returns a Dollar proxy object
  */
-HTMLDocument.prototype.$ = function (selector) {
+Document.prototype.$ = function (selector) {
 	let nodeList = this.querySelectorAll(selector);
 	let p = new Proxy(nodeList, handler);
 	return p;
 }
-HTMLDocument.prototype.$.intercept = intercept;
+Document.prototype.$.intercept = intercept;
+
+const equals = a =>
+{
+	return b => {
+		if(b.__isDollarProxy)
+		{
+			if(a.length != b.length)
+				return false;
+
+			for(let i = 0; i < a.length; i++)
+			{
+				if(a[i] != b[i])
+					return false;
+			}
+
+			return true;
+		}
+
+		if(b instanceof HTMLElement)
+		{
+			if(a.length == 1 && a[0] == b)
+				return true;
+
+			return false;
+		}
+
+		return false;
+	};
+}
 
 const handler = {
 	
@@ -67,6 +96,9 @@ const handler = {
 				return obj[prop];
 		}
 
+		if(prop === 'equals')
+			return equals(obj);
+		
 		if(obj.length === 0)
 			return null;
 
@@ -74,7 +106,7 @@ const handler = {
 			return null;
 		
 		var type = typeof obj[0][prop];
-		
+
 		if(type == 'object' && (obj.length > 1 || type.constructor.toString().indexOf(' Object()') > -1))
 			return new Proxy(obj.map(o => o[prop]), handler);
 		
