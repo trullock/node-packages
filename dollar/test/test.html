@@ -46,10 +46,15 @@
 				// /// Value reading test
 				// console.log(document.$('input').value);
 
+				
 				const lis = [...document.$('li')];
 				
 				const $lis = document.$('.list').$('li');
 				$lis.style.color = 'red';
+
+				const $null = document.$('#i-dont-exist');
+				if($null)
+					console.error("Error: Null isnt null");
 
 				if(!document.$('.appendA').equals(document.$('.appendA')))
 					console.error("Dollars not equal!");
