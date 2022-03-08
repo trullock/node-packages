@@ -124,8 +124,17 @@ const handler = {
 					};
 					return a;
 				})
+				
 				if(obj.length > 1)
-					return obj.map(o => o[prop].apply(o, args));	
+				{
+					const result = obj.map(o => o[prop].apply(o, args));
+					if(prop === '$')
+						{
+							let children = result.reduce((agg, curr) => agg.concat([...curr]), []);
+							return new Proxy(children, handler);
+						}
+					return result;
+				}
 				return obj[0][prop].apply(obj[0], args);
 			};
 		}

@@ -51,13 +51,24 @@ With Dollar you just do this:
 ```
 const $buttons = document.$('button');
 $buttons.addEventListener(e => {}, false);
-
 ```
 
 ### Accessing underlying HTMLElements by index
 ```
 const $inputs = document.$('input');
 const input = $inputs[0];
+```
+
+### Converting a Dollar object into an array of HTMLElements
+```
+const $spans = document.$('span');
+const spans = [...$spans];
+```
+
+### Selecting descendent elements from a Dollar object
+```
+const $sections = document.$('section');
+const $allPs = $sections.$('p');
 ```
 
 ## Interceptors
@@ -83,7 +94,7 @@ And then when you want to set the value of an input somewhere, you can do it tra
 ```
 const date = new Date();
 date.setTime(xxx); // where xxx is some unlocalised (e.g. UTC) value, perhaps from some API you called
-document.$('input[type=datetime-local].local-date').value = date;
+document.$('input[type=datetime-local].example-input').value = date;
 ```
 
 

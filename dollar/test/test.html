@@ -4,7 +4,7 @@
         li.green { color: green; }
     </style>
     <body>
-        <ul>
+        <ul class="list">
             <li>One</li>
             <li>Two</li>
             <li>Three</li>
@@ -16,7 +16,7 @@
             <input name="name3" />
         </form>
 
-        <ol>
+        <ol class="list">
             <li>One</li>
             <li>Two</li>
             <li>Three</li>
@@ -46,6 +46,10 @@
 				// /// Value reading test
 				// console.log(document.$('input').value);
 
+				const lis = [...document.$('li')];
+				
+				const $lis = document.$('.list').$('li');
+				$lis.style.color = 'red';
 
 				if(!document.$('.appendA').equals(document.$('.appendA')))
 					console.error("Dollars not equal!");
