@@ -79,8 +79,6 @@ const handler = {
 		if(prop === '__isDollarProxy')
 			return true;
 
-		// TODO: handle prop being Symbol(Symbol.iterator)
-
 		if(obj instanceof NodeList)
 		{
 			obj = [...obj];

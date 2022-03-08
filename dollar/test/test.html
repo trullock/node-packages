@@ -50,9 +50,14 @@
 				if(!document.$('.appendA').equals(document.$('.appendA')))
 					console.error("Dollars not equal!");
 
-					
+				if(!document.$('.appendA').equals(document.$('.appendA')[0]))
+					console.error("Dollars not equal!");
+
 				if(!document.$('span').equals(document.$('span')))
 					console.error("Dollars not equal!");
+
+				for(x of document.$('span'))
+					console.log(x);
 
 				[...document.$('li')].forEach($li => $li.setAttribute('data-test', 'test'));
 				let files = document.$('[type=file]').files;
