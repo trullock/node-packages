@@ -43,6 +43,11 @@ HTMLElement.prototype.$ = function (selector) {
  */
 HTMLElement.prototype.$.intercept = intercept;
 
+export function $ (elem) {
+	let p = new Proxy(elem, handler);
+	return p;
+}
+
 /**
  * Selects 0, 1 or more elements by css selector
  * @param {string} selector
