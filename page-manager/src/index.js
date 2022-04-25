@@ -159,6 +159,7 @@ function showPage(url, data, event) {
 	if (event.action == 'load')
 	{
 		return getPage
+					.then(page => doShow(page, data))
 					.then(page => {
 						// clean initial load
 						if(stackPointer == -1)
@@ -173,8 +174,7 @@ function showPage(url, data, event) {
 							stack[stackPointer].data = data;
 						}
 						return page;
-					})
-					.then(page => doShow(page, data));
+					});
 	}
 
 	let currentState = stack[stackPointer];
@@ -321,8 +321,16 @@ export async function init(opts) {
 	// set initial page
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
 		console.error(e);
+		
 		if (e instanceof PageShowError)
-			return showPage(e.url, e.data, { action: stackPointer == -1 ? 'load' : e.action || 'show' });
+		{
+			return showPage(e.url, e.data, { action: stackPointer == -1 ? 'load' : e.action || 'show' }).then(page => {
+				if(e.action == 'replace')
+					handleHistoryAction({ action: e.action }, e.url, e.data, page);
+				return page;
+			});
+			
+		}
 	});
 
 	function handlePopstate(context, direction, distance) {
