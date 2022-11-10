@@ -54,11 +54,13 @@
 
 				let $null = document.$1('#i-dont-exist');
 				if($null)
-					console.error("Error: Null isnt null");
+					console.error("Expected null");
 
 				$null = document.$('.i-dont-exist');
 				if($null)
-					console.error("Error: Null isnt null");
+					console.error("Expected null");
+				$null?.clasList.add('test');
+				
 
 				if(!document.$('.appendA').equals(document.$('.appendA')))
 					console.error("Dollars not equal!");
