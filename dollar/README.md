@@ -154,7 +154,7 @@ if(!$elements)
 }
 ```
 
-If you expect to select no elements but still want to interact deeply, use the Elvis operator:
+If there's a possiblilty you will select no elements but still want to interact deeply, use optional chaining:
 
 
 ```
