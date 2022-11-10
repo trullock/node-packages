@@ -52,7 +52,11 @@
 				const $lis = document.$('.list').$('li');
 				$lis.style.color = 'red';
 
-				const $null = document.$('#i-dont-exist');
+				let $null = document.$1('#i-dont-exist');
+				if($null)
+					console.error("Error: Null isnt null");
+
+				$null = document.$('.i-dont-exist');
 				if($null)
 					console.error("Error: Null isnt null");
 

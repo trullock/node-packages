@@ -16,12 +16,14 @@ function intercept(selector)
 }
 
 /**
- * Selects 0, 1 or more elements by css selector
+ * Selects multiple elements by css selector. If no elements are found, null is returned NOT an empty enumerable
  * @param {string} selector 
  * @returns a Dollar proxy object
  */
 HTMLElement.prototype.$ = function (selector) {
 	let nodeList = this.querySelectorAll(selector);
+	if(nodeList.length == 0)
+		return null;
 	let p = new Proxy(nodeList, handler);
 	return p;
 }
@@ -55,6 +57,8 @@ export function $ (elem) {
  */
 Document.prototype.$ = function (selector) {
 	let nodeList = this.querySelectorAll(selector);
+	if(nodeList.length == 0)
+		return null;
 	let p = new Proxy(nodeList, handler);
 	return p;
 }

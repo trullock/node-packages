@@ -16,7 +16,9 @@ This will select 0, 1 or many elements - depending on what `.selector` matches. 
 const $elements = document.$('.selector')
 ```
 
-Note that if no elements are found, $elements is an empty Dollar object, not null. This means you shouldn't do `if(!$elements)` for seeing if you selected nothing. If thats the behaviour you want see `$1` below.
+Note that if no elements are found, $elements is null, not an empty Dollar object or an empty enumerable. 
+
+This allows you to do `if(!$elements)` for seeing if you selected nothing.
 
 ## Selecting elements with `$1()`
 
@@ -133,7 +135,7 @@ const iAmTrue = document.$('span').__isDollarProxy;
 
 ## Null comparison
 
-If you expect to select a single element and then want to check if it exists (or rather, was selected) using falseyness, you should use the `$1()` method, as `$()` will return a `.length == 0` collection rather than null.
+Selecting one or multiple elements with `$1('')` and `$('')` respectively will return `null` if no elements are found.
 
 ```
 const $singleElementOrNull = document.$1('.selector');
@@ -148,9 +150,19 @@ if(!$singleElementOrNull)
 const $elements = document.$('.selector');
 if(!$elements)
 {
-	// this will never be called, $elements will always be truey, even if no elements were selected. You'll get an empty collection instead.
+	// this will also work, if no elements matched
 }
 ```
+
+If you expect to select no elements but still want to interact deeply, use the Elvis operator:
+
+
+```
+const $elements = document.$('.selector');
+$elements?.classList.add('awesome');
+```
+
+
 
 ## Equality comparison
 
