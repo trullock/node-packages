@@ -1,26 +1,20 @@
-
-/*
-A function to represent a queue
-Created by Stephen Morley - http://code.stephenmorley.org/ - and released under the terms of the CC0 1.0 Universal legal code: http://creativecommons.org/publicdomain/zero/1.0/legalcode
-*/
-var Queue = function () {
-	var queue = [];
-	var offset = 0;
-	var me = {};
-
-	function getLength() {
-		return (queue.length - offset);
+class Queue {
+	queue = []
+	offset = 0
+	
+	getLength() {
+		return queue.length - offset;
 	}
 
-	me.isEmpty = function () {
-		return (queue.length === 0);
-	};
+	isEmpty() {
+		return queue.length === 0;
+	}
 
-	me.enqueue = function (item) {
+	enqueue(item) {
 		queue.push(item);
-	};
+	}
 
-	me.dequeue = function () {
+	dequeue() {
 		if (queue.length === 0)
 			return undefined;
 
@@ -32,35 +26,59 @@ var Queue = function () {
 		}
 
 		return item;
-	};
+	}
 
-	me.peek = function () {
-		return (queue.length > 0 ? queue[offset] : undefined);
-	};
-
-	return me;
+	peek() {
+		return queue.length > 0 ? queue[offset] : undefined;
+	}
 };
 
 
-var me = {};
 var handlers = {};
 var queue = new Queue();
-var processing;
+var processing = null;
 
 function processQueue() {
+	if(processing)
+		return;
+
+	promises = []
 	while (!queue.isEmpty()) {
 		var action = queue.dequeue();
-		action.call(null);
+		promises.push(action.call(null));
 	}
+	processing = Promise.all(promises);
+	processing.finally(() => processing = null)
 }
 
 function enqueue(handler, args) {
 	queue.enqueue(function () {
-		handler.apply(null, args);
+		try
+		{
+			return Promise.resolve(handler.apply(null, args));
+		}
+		catch(e)
+		{
+			errorHandler(e, handler, args);
+			return Promise.resolve(false);
+		}
 	});
 }
 
-me.subscribe = function (type, func) {
+let errorHandler = function (error, handler, args)
+{
+	console.error('Error executing pubsub subscriber');
+	console.error(error);
+	console.error(handler);
+	console.error(args);
+}
+
+export function setErrorHandler(fn)
+{
+	errorHandler = fn;
+}
+
+export function subscribe (type, func) {
 	if (!handlers[type])
 		handlers[type] = [];
 
@@ -73,48 +91,43 @@ me.subscribe = function (type, func) {
 	return this;
 };
 
-me.subscribeOnce = function (type, func) {
+export function subscribeOnce (type, func) {
 	var handler = function () {
-		me.unsubscribe(handler);
+		unsubscribe(handler);
 
 		func.apply(null, arguments);
 	};
-	me.subscribe(type, handler);
+	subscribe(type, handler);
 };
 
-me.publish = function (type) {
+export function publish (type) {
 	if (!handlers[type])
 		return;
 
-	for (var i in handlers[type]) {
+	for (var handler of handlers[type]) {
 		var args = [];
 		for (var j = 1; j < arguments.length; j++) {
 			args.push(arguments[j]);
 		}
 
-		enqueue(handlers[type][i], args);
+		enqueue(handler, args);
 	}
 
-	if (!processing) {
-		while (!queue.isEmpty()) {
-			processing = true;
-			processQueue();
-		}
-		processing = false;
-	}
-	return this;
+	processQueue();
+
+	return processing;
 };
 
-me.unsubscribeAll = function (type) {
+export function unsubscribeAll (type) {
 	if (type)
 		delete handlers[type]
 	else
 		handlers = {};
 };
 
-me.unsubscribe = function (handler) {
+export function unsubscribe (handler) {
 	for (var type in handlers) {
-		for (var i in handlers[type]) {
+		for (var i = 0; i < handlers[type].length; i++) {
 			if (handlers[type][i] === handler) {
 				handlers[type].splice(i, 1);
 				if (handlers[type].length === 0)
@@ -124,5 +137,3 @@ me.unsubscribe = function (handler) {
 		}
 	}
 };
-
-export default me;

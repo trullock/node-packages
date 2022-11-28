@@ -114,7 +114,9 @@ function loadPage(route, data) {
 		}
 
 		var page = pageCache[route.path].page;
-		return page.boot(data).then(() => page);
+		
+		let booted = new Promise(resolve => resolve(page.boot(data)));
+		return booted.then(() => page);
 	});
 }
 

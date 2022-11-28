@@ -77,6 +77,9 @@
 				[...document.$('li')].forEach($li => $li.setAttribute('data-test', 'test'));
 				let files = document.$('[type=file]').files;
 
+
+				if(document.$('.dont-exist').classList == null)
+					document.error("")
 				
 
 				document.$('.appendA').appendChild(document.$('.appendB'));
