@@ -402,6 +402,8 @@ export default function(language){
                 if($button)
                     $button.setSubmitting(false);
         }
+
+		this.dispatchEvent(new CustomEvent('submitting', { detail: { submitting }, bubbles: true} ));
     }
 
     HTMLFormElement.prototype.submitOnCtrlEnter = function () {

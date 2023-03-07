@@ -30,7 +30,7 @@ var options = {
 			});
 	},
 	pageInterrupt: route => null,
-	pageContainer: () => document.body,
+	attachMarkup: $html => document.body.appendChild($html),
 	prepareMarkup: $html => { },
 	loadingPageName: 'loading',
 	error404PageName: 'error-404',
@@ -107,7 +107,7 @@ function loadPage(route, data) {
 	return fetchPage.then($template => {
 		var $html = $template.cloneNode(true);
 		options.prepareMarkup($html);
-		options.pageContainer().appendChild($html);
+		options.attachMarkup($html);
 		pageCache[route.path] = {
 			$html,
 			page: new (route.pageClass)($html)
