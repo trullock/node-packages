@@ -1,5 +1,4 @@
 import router from '@trullock/router';
-import PageShowError from './pageshowerror.js';
 
 var pageHash = {},
 	pageCache = {},
@@ -76,6 +75,11 @@ export function getPath(name, values) {
 	return url;
 }
 
+export function refresh() {
+	let frame = stack[stackPointer];
+	showPage(frame.data.route.url, frame.data, 'replace');
+}
+
 // TODO: 404 and error too?
 function initLoading()
 {
@@ -97,7 +101,7 @@ function showLoading() {
 
 	var page = pageCache[page.url].page;
 
-	return page.show(data);
+	return Promise.resolve(page.show(data));
 }
 
 function loadPage(route, data) {
@@ -211,7 +215,7 @@ function doShow(page, data) {
 
 	window.scroll(0, 0);
 
-	return page.show(data)
+	return Promise.resolve(page.show(data))
 			.then(() => document.title = page.title)
 			// todo: hide() should be passed an event object
 			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
@@ -220,16 +224,15 @@ function doShow(page, data) {
 }
 
 
-function doUpdate(page, data) {
+async function doUpdate(page, data) {
 
-	return page.update(data)
-			.then(() => document.title = page.title)
-			// todo: hide() should be passed an event object
-			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
-			// return page
-			.then(() => page);
+	await Promise.resolve(page.update(data));
+
+	document.title = page.title
+	// todo: hide() should be passed an event object
+	await pageCache[pageHash[options.loadingPageName].url].page.hide()
+	return page;
 }
-
 
 function handleHistoryAction(event, url, data, page) {
 	if (event.action == 'push') {
@@ -489,7 +492,11 @@ export function navigate(url, data, checkBeforeUnload) {
 		}
 	}
 
-	doNavigate(url, data);
+	doNavigate(url, data).catch(e => {
+		console.error(e);
+		if (e instanceof PageShowError)
+			return showPage(e.url, e.data, { action: e.action || 'show' });
+	});
 }
 
 export function replace(url, data) {
@@ -584,5 +591,20 @@ export function purgeCache() {
 			pageCache[path].$html.remove();
 			delete pageCache[path];
 		}
+	}
+}
+
+export class PageShowError extends Error {
+	constructor(url, message, data, action) {
+		super(message || 'Error showing requested page')
+
+		// Maintains proper stack trace for where our error was thrown (only available on V8)
+		if (Error.captureStackTrace)
+			Error.captureStackTrace(this, PageShowError)
+
+		this.name = 'PageShowError'
+		this.url = url;
+		this.data = data;
+		this.action = action;
 	}
 }

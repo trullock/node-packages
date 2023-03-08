@@ -5,11 +5,13 @@ import page1 from './page-page1.js'
 import page2 from './page-page2.js'
 import page3 from './page-page3.js'
 import page4 from './page-page4.js'
+import page404 from './page-page404.js'
 
 window.addEventListener('DOMContentLoaded', function () {
 	pageManager.init({
 		pageContainer: () => document.body,
 		fetchPath: route => '/pages/' + route.routeName + '.htm',
+		error404PageName: 'page404'
 	});
 
 

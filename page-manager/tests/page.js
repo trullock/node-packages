@@ -19,6 +19,10 @@ export default class Page {
 		return Promise.resolve();
 	}
 
+	update() {
+		return Promise.resolve();
+	 }
+
 	hide() {
 		this.$page.style.display = 'none';
 		return Promise.resolve();
