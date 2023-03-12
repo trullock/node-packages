@@ -3,33 +3,33 @@ class Queue {
 	offset = 0
 	
 	getLength() {
-		return queue.length - offset;
+		return this.queue.length - this.offset;
 	}
 
 	isEmpty() {
-		return queue.length === 0;
+		return this.queue.length === 0;
 	}
 
 	enqueue(item) {
-		queue.push(item);
+		this.queue.push(item);
 	}
 
 	dequeue() {
-		if (queue.length === 0)
+		if (this.queue.length === 0)
 			return undefined;
 
-		var item = queue[offset];
+		var item = this.queue[this.offset];
 
-		if (++offset * 2 >= queue.length) {
-			queue = queue.slice(offset);
-			offset = 0;
+		if (++this.offset * 2 >= this.queue.length) {
+			this.queue = this.queue.slice(this.offset);
+			this.offset = 0;
 		}
 
 		return item;
 	}
 
 	peek() {
-		return queue.length > 0 ? queue[offset] : undefined;
+		return this.queue.length > 0 ? this.queue[this.offset] : undefined;
 	}
 };
 
@@ -42,7 +42,7 @@ function processQueue() {
 	if(processing)
 		return;
 
-	promises = []
+	let promises = []
 	while (!queue.isEmpty()) {
 		var action = queue.dequeue();
 		promises.push(action.call(null));
@@ -104,13 +104,13 @@ export function publish (type) {
 	if (!handlers[type])
 		return;
 
-	for (var handler of handlers[type]) {
+	for (var i = 0; i < handlers[type].length; i++) {
 		var args = [];
 		for (var j = 1; j < arguments.length; j++) {
 			args.push(arguments[j]);
 		}
 
-		enqueue(handler, args);
+		enqueue(handlers[type][i], args);
 	}
 
 	processQueue();
