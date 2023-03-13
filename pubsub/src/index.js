@@ -69,7 +69,7 @@ function enqueue(handler, args) {
 
 let errorHandler = function (error, handler, args)
 {
-	console.error('PubSub: Error executing pubsub subscriber'), error, handler, args);
+	console.error('PubSub: Error executing pubsub subscriber', error, handler, args);
 }
 export function setErrorHandler(fn)
 {
