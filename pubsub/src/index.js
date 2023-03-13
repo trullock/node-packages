@@ -55,7 +55,7 @@ function enqueue(handler, args) {
 	queue.enqueue(function () {
 		try
 		{
-			log(`	Executing handler '${handler.name || '<anon>'}'`, args)
+			log(`PubSub:	Executing handler '${handler.name || '<anon>'}'`, args)
 			return Promise.resolve(handler.func.apply(null, args));
 		}
 		catch(e)
@@ -69,10 +69,7 @@ function enqueue(handler, args) {
 
 let errorHandler = function (error, handler, args)
 {
-	console.error('Error executing pubsub subscriber');
-	console.error(error);
-	console.error(handler);
-	console.error(args);
+	console.error('PubSub: Error executing pubsub subscriber'), error, handler, args);
 }
 export function setErrorHandler(fn)
 {
@@ -122,7 +119,7 @@ export function publish (type) {
 		args.push(arguments[j]);
 	}
 
-	log(`Publishing event '${type}`, args)
+	log(`PubSub: Publishing event '${type}`, args)
 
 	if (!handlers[type])
 		return;

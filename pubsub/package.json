@@ -1,6 +1,6 @@
 {
   "name": "@trullock/pubsub",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Pub/Sub message bus",
   "exports": {
     ".": "./src/index.js"
