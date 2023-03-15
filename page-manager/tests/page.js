@@ -15,6 +15,7 @@ export default class Page {
 	}
 
 	show(opts) {
+		debugger;
 		this.$page.style.display = 'block';
 		return Promise.resolve();
 	}

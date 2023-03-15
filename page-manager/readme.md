@@ -119,11 +119,41 @@ e.g. Update the time the page was shown, every time its shown
 
 ## Navigating
 
-To show a new page, use the `navigate(url, data, checkBeforeHide = true)` method.
+### Navigate
+
+To show a new page and push the url onto the history stack (a la a normal brower hyperlink click), use the `navigate(url, data, checkBeforeHide = true)` method.
 
 `url` is the URL of the page to show
 
-`data` is optional data to pass to the page, as well as certain special instructions for how to perform the navigation
+`data` is optional data to pass to the page
+
+`checkBeforeHide` defaults to true, and causes the current page's `beforeHide` method to be called before hiding the current page and showing the next
+
+### replace
+
+To show a new page and replace the current url (removing any evidence in history) use the `replace(url, data)` function.
+
+`url` is the URL of the page to show
+
+`data` is optional data to pass to the page
+
+Note: this doesn't currently support `beforeHide` checks. This is a known limitation.
+
+### show
+
+To show a new page and keep the current url use the `show(url, data)` function.
+
+`url` is the URL of the page to show
+
+`data` is optional data to pass to the page
+
+Note: this doesn't currently support `beforeHide` checks. This is a known limitation.
+
+### back
+
+To manually trigger a backwards (in history) page navigation, use the `back(data, checkBeforeHide)` method.
+
+`data` is optional data to pass to the page
 
 `checkBeforeHide` defaults to true, and causes the current page's `beforeHide` method to be called before hiding the current page and showing the next
 
@@ -135,19 +165,74 @@ Define the `beforeHide` handler on the PageManager setup:
 
 ```
 pageManager.init({
-	beforeHide: message => new Promise(resolve => {
-		resolve(confirm(message))
-	})
+	beforeHide: message => Promise.resolve(confirm(message))
 });
 ```
 
-and then define page specific `beforeHide` begaviours:
+and then define page specific `beforeHide` behaviours:
 
 ```
 pageManager.registerPage('edit-thing', '/thing/{thingId}/edit', class extends Page {
 	beforeHide = () => 'Are you sure?'
 });
 ```
+
+## History manipulation
+
+Sometimes in application-style webapps it's convenient to remove pages from the browser's history.
+
+Say you have a form to create a new Thing, and your navigation path looks like this:
+
+```
+Home -> Add New Thing -> View Newly Added Thing
+```
+
+Traditionally, if you press Back when on the last page, you'd go back to the `Add New Thing` page. This is probably undesireable, you really want to go back to `Home`. In this case, make the navigation from `Add New Thing` to `View Newly Added Thing` use `replace(url, data)` instead of `navigate(url, data)`.
+
+However, what if you have multiple steps to add a new thing, like a wizard.
+
+```
+Home -> Add New Thing Step 1 -> Add New Thing Step 2 -> Add New Thing Step 3 -> View Newly Added Thing
+```
+
+In this case, you want to use `removeHistory(predicate)`. This will rewind history until `predicate` no longer matches and then re-add the current page onto the end of the history stack, thus splicing any matched history entries from the record.
+
+`predicate` must be a function of the following form:
+
+```
+function(historyEntry, index) {
+	return <bool>
+}
+```
+
+A `historyEntry` looks like this:
+
+```
+{
+	uid: 123 // internal unique state id, not very useful to you,
+	data: {} // this is the data associated with the page that was shown (i.e. what was passed to `show(opts)`)
+	page: <Page> // this is the instance of the Page class associated with this history entry
+}
+```
+
+So if your url history was as below:
+
+```
+/
+/add-thing/step1
+/add-thing/step2
+/add-thing/step3
+/thing/1
+```
+
+then you might call `removeHistory()` like this:
+
+```
+removeHistory((entry, i) => {
+	return entry.data.route.path.indexOf('/add-thing/') == 0;
+})
+```
+
 
 ## Page Container
 
