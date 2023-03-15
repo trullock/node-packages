@@ -7,7 +7,7 @@ var pageHash = {},
 	stackPointer = -1;
 
 var manuallyAdjustingHistory = false;
-var handlingBeforeUnload = false;
+var handlingBeforeHide = false;
 var lastNavigationDirection = null;
 
 var goal = null;
@@ -34,7 +34,7 @@ var options = {
 	loadingPageName: 'loading',
 	error404PageName: 'error-404',
 	defaultPageName: 'root',
-	beforeUnload: null
+	beforeHide: null
 }
 
 export const pages = pageHash;
@@ -132,7 +132,7 @@ function showPage(url, data, event) {
 		if(!page404)
 			return Promise.reject(new PageShowError('/', `Can't find page: '${url}'. Also can't find 404 page: '${options.error404PageName}'`, {}, 'replace'));
 
-		return Promise.reject(new PageShowError(page404.url, `Can't find page: '${url}'`, {}, 'replace'));
+		return Promise.reject(new PageShowError(page404.url, `Can't find page: '${url}'`, {}, 'show'));
 	}
 
 	data = data || {};
@@ -359,18 +359,18 @@ export async function init(opts) {
 		})
 	}
 
-	function handleBeforeUnloadPart1() {
-		// if we're ignoring beforeUnload this navigation
-		if (handlingBeforeUnload === 'ignore') {
-			handlingBeforeUnload = false;
+	function handleBeforeHidePart1() {
+		// if we're ignoring beforeHide this navigation
+		if (handlingBeforeHide === 'ignore') {
+			handlingBeforeHide = false;
 			return false;
 		}
 
 		// if we have a before-unload confirm to show
-		if (stack[stackPointer].page.beforeUnload && options.beforeUnload && handlingBeforeUnload === false) {
-			var interrupt = stack[stackPointer].page.beforeUnload();
+		if (stack[stackPointer].page.beforeHide && options.beforeHide && handlingBeforeHide === false) {
+			var interrupt = stack[stackPointer].page.beforeHide();
 			if (interrupt) {
-				handlingBeforeUnload = 'step1';
+				handlingBeforeHide = 'step1';
 
 				// do this in a new thread, you cant call history actions from inside a history-aciton-handler
 				window.setTimeout(() => {
@@ -385,31 +385,31 @@ export async function init(opts) {
 			}
 		}
 
-		// we've finished beforeUnloading
-		if (handlingBeforeUnload === 'step2')
-			handlingBeforeUnload = false;
+		// we've finished beforeHiding
+		if (handlingBeforeHide === 'step2')
+			handlingBeforeHide = false;
 
 		return false;
 	}
 
-	function handleBeforeUnloadPart2() {
-		if (handlingBeforeUnload !== 'step1')
+	function handleBeforeHidePart2() {
+		if (handlingBeforeHide !== 'step1')
 			return false;
 
-		// do the beforeUnload action, then...
-		options.beforeUnload(stack[stackPointer].page.beforeUnload()).then(result => {
+		// do the beforeHide action, then...
+		options.beforeHide(stack[stackPointer].page.beforeHide()).then(result => {
 
 			// if the user confirmed, redo the original action
 			if (result) {
 
-				handlingBeforeUnload = 'step2';
+				handlingBeforeHide = 'step2';
 
 				if (lastNavigationDirection == 'fwd')
 					history.forward();
 				else if (lastNavigationDirection == 'back')
 					history.back();
 			} else {
-				handlingBeforeUnload = false;
+				handlingBeforeHide = false;
 			}
 		});
 
@@ -418,7 +418,7 @@ export async function init(opts) {
 
 	// listen for browser navigations
 	window.addEventListener("popstate", e => {
-		var interrupted = handleBeforeUnloadPart2();
+		var interrupted = handleBeforeHidePart2();
 		if (interrupted)
 			return;
 
@@ -428,7 +428,7 @@ export async function init(opts) {
 		lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
 		let distance = Math.abs(newUid - previousUid);
 
-		var interrupted = handleBeforeUnloadPart1();
+		var interrupted = handleBeforeHidePart1();
 		if (interrupted)
 			return;
 
@@ -438,7 +438,7 @@ export async function init(opts) {
 
 	if(storageAvailable())
 	{
-		window.addEventListener("beforeunload", () => {
+		window.addEventListener("beforeHide", () => {
 
 			let stackToSerialize = stack.map(s => ({
 				uid: s.uid,
@@ -476,15 +476,15 @@ function expandOnlyHash(url)
 	return url;
 }
 
-export function navigate(url, data, checkBeforeUnload) {
+export function navigate(url, data, checkBeforeHide = true) {
 
 	url = expandOnlyHash(url);
 
-	if (checkBeforeUnload === true && stack[stackPointer].page.beforeUnload && options.beforeUnload) {
+	if (checkBeforeHide === true && stack[stackPointer].page.beforeHide && options.beforeHide) {
 
-		var interrupt = stack[stackPointer].page.beforeUnload();
+		var interrupt = stack[stackPointer].page.beforeHide();
 		if (interrupt !== false) {
-			options.beforeUnload(interrupt).then(result => {
+			options.beforeHide(interrupt).then(result => {
 				if (result)
 					doNavigate(url, data);
 			});
@@ -508,9 +508,9 @@ export function show(url, data) {
 	return showPage(url, data, { action: 'show', distance: 0 });
 }
 
-export function back(data, checkBeforeUnload) {
+export function back(data, checkBeforeHide) {
 	backData = data || {};
-	handlingBeforeUnload = checkBeforeUnload === false ? 'ignore' : false;
+	handlingBeforeHide = checkBeforeHide === false ? 'ignore' : false;
 	history.go(-1);
 }
 

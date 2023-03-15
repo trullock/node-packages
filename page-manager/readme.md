@@ -1,6 +1,6 @@
 # Page Manager
 
-This project provides a skeleton for building single page webapps, with a focus on advanced browser navigation support and history manipulation.
+This project provides a skeleton for building single page webapps, with a focus on advanced browser navigation support, history manipulation and lazy loading.
 
 ## Pages
 
@@ -11,7 +11,6 @@ import {registerPage, Page} from '@trullock/page-manager';
 registerPage('view-thing', '/things/{thingId}', class extends Page {
 
 });
-
 ```
 
 The first argument `'view-thing'` is the name of the page, this can be used to build/look-up its url later without needing to hardcode url strings everywhere
@@ -118,6 +117,37 @@ e.g. Update the time the page was shown, every time its shown
 	}
 ```
 
+## Navigating
+
+To show a new page, use the `navigate(url, data, checkBeforeHide = true)` method.
+
+`url` is the URL of the page to show
+
+`data` is optional data to pass to the page, as well as certain special instructions for how to perform the navigation
+
+`checkBeforeHide` defaults to true, and causes the current page's `beforeHide` method to be called before hiding the current page and showing the next
+
+### beforeHide
+
+If you wish to force the user to confirm a navigation away from the current page (e.g. to prevent losing unsaved changes in a form) you can use the `beforeHide` functionality.
+
+Define the `beforeHide` handler on the PageManager setup:
+
+```
+pageManager.init({
+	beforeHide: message => new Promise(resolve => {
+		resolve(confirm(message))
+	})
+});
+```
+
+and then define page specific `beforeHide` begaviours:
+
+```
+pageManager.registerPage('edit-thing', '/thing/{thingId}/edit', class extends Page {
+	beforeHide = () => 'Are you sure?'
+});
+```
 
 ## Page Container
 

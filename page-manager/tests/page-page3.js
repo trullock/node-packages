@@ -6,6 +6,8 @@ export default pageManager.registerPage('page3', '/page3', class extends Page {
 
 	title = "Page 3";
 	
+	beforeHide = () => 'Are you sure?'
+
 	constructor($page) {
 		super($page);
 

@@ -11,7 +11,10 @@ window.addEventListener('DOMContentLoaded', function () {
 	pageManager.init({
 		pageContainer: () => document.body,
 		fetchPath: route => '/pages/' + route.routeName + '.htm',
-		error404PageName: 'page404'
+		error404PageName: 'page404',
+		beforeHide: message => new Promise(resolve => {
+			resolve(confirm(message))
+		})
 	});
 
 
