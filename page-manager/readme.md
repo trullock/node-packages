@@ -8,15 +8,15 @@ Create a basic page like this:
 
 ```
 import {registerPage, Page} from '@trullock/page-manager';
-registerPage('my-page', '/my-page', class extends Page {
+registerPage('view-thing', '/things/{thingId}', class extends Page {
 
 });
 
 ```
 
-The first argument `'my-page'` is the name of the page, this can be used to build/look-up its url later without needing to hardcode url strings everywhere
+The first argument `'view-thing'` is the name of the page, this can be used to build/look-up its url later without needing to hardcode url strings everywhere
 
-The second argument `'/my-page'` is the url (route) of the page
+The second argument `'/things/{thingId}'` is the url (route) of the page
 
 The third arguent is a class definition for the page.
 
@@ -57,7 +57,7 @@ e.g.
 	constructor($page){
 		super($page);
 
-		let $thing = $page.getElementById('Thing');
+		this.$thingName = $page.getElementById('ThingName');
 	}
 ```
 
@@ -74,6 +74,50 @@ e.g.
 `opts.route` contains information about the route and the request url and parameters
 
 Any query or url parameters will also be present on opts. Currently these are at the top level meaning you could get conflicts between the formally defined properties above and any parameters. For now, avoid creating conflicting parameters with these names.
+
+
+e.g. get a `Thing` from the database based on a url parameter and update the page markup with details of the `Thing`
+
+```
+	async boot(opts){
+		let thing = await getThing(opts.thingId);
+		this.$thingName.textContent = thing.name;
+	}
+```
+
+#### Show
+
+`show(opts)` is called before the page is shown. This may happen multiple times in a page's life.
+
+Assuming the default caching strategy, the markup for a page will remain between consecutive show/hide events. Consequently any content which is present on one show which should not be on the next show will need manually adjusting.
+
+e.g. Update the time the page was shown, every time its shown
+
+```
+	constructor($page){
+		super($page);
+		this.$time = $page.getElementById('Time');
+	}
+
+	async show(opts){
+		this.$time.textContent = new Date().getTime();
+	}
+```
+
+#### Update
+
+`update(opts)` is similar to show. If `pageManager.navigate()` is called to the same url (route) as the current page, `show` and `hide` are not called as you might expect, instead `update(opts)` gets called where you can update the page with the new information from `opts`
+
+#### Hide
+`hide()` is called when the page needs hiding, i.e. the user has navigated away and the next page is about to be shown.
+
+
+```
+	async hide(){
+		// Do some clean up, like stopping any animations which may be happening
+	}
+```
+
 
 ## Page Container
 
