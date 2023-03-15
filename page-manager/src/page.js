@@ -1,15 +1,8 @@
 export default class Page {
 	
-
-	
 	constructor($page){
 		this.$page = $page;
 		this.visible = false;
-	}
-
-	load()
-	{
-
 	}
 
 	invalidateCache(){
@@ -24,7 +17,6 @@ export default class Page {
 	set title(value) {
 		this._title = value;
 	}
-
 
 	boot(opts){
 		return Promise.resolve();
