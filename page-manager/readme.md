@@ -234,21 +234,78 @@ removeHistory((entry, i) => {
 ```
 
 
-## Page Container
+### Refresh
 
-The `pageContainer` option is a function which returns a document element which will contain the markup for each page when it's loaded:
+To refresh the current page with the data/opts it was originally shown with, call the `refresh()` method.
 
-`pageContainer: () => document.body`
+## Initialising PageManager
 
-## Prepare Markup
+TO use Page Mangager you must initialise it by calling `init(options)`.
 
-The `prepareMarkup` option is a function which takes the HTML for each loaded page as an argument. It is exectuted after the HTML has been fetched and before it is inserted into the DOM and shown.
-This is useful if you want to modify the HTML in some way, a common example is to bind validation libraries to forms.
+### Default pages
 
-To add a class to all `<p>`s within the page, you could do:
+A loading page is always shown between page transitions, control the name of this (as used in `registerPage(name, route, page)`) with `loadingPageName`.
+
+Control the name of the 404 page with `error404PageName`
+
+Control the default page name with `defaultPageName`. This is the name of the page to show when authentication methods hves no other options and under extreme error conditions.
 
 ```
-prepareMarkup: $html => {
-	[...$html.querySelectorAll('.p')].forEach($p => $p.classList.add('example'));
-}
+	loadingPageName: 'loading',
+	error404PageName: 'error-404',
+	defaultPageName: 'root',
 ```
+
+### Authentication
+
+A major feature of PageManager is its handling of authenticated pages. To implement authentication, use the `pageInterrupt` option.
+This is a function that is called before fetching/booting/showing every page. Use it to see if the page needs authentication and handle authorization. You might do this like this:
+
+
+```
+pageManager.init({
+	pageInterrupt: route => {
+		if (route.pageClass.requireAuth && !currentUser)
+			return { url: pageManager.getPath('account-sign-in') };
+		return null;
+	},
+	/// ...
+})
+```
+
+```
+pageManager.registerPage('secure-page', '/secure-page', class extends Page {
+		static requireAuth = true;
+})
+```
+### Fetching page content
+
+PageManager is built so that it can lazily fetch page markup. To do this, use the following options:
+
+```
+	// The path to make an HTTP request to to fetch the markup, given a route
+	fetchPath: route => '/pages/' + route.routeName + '.html',
+
+	// The fetch method, you probably dont want to mess with this implementation
+	fetchPageTemplate: route => {
+		return fetch(options.fetchPath(route))
+			.then(r => r.text())
+			.then(html => {
+				var $div = document.createElement('div');
+				$div.innerHTML = html;
+				// Pages are assumed to have a single wrapping element
+				return $div.firstElementChild;
+			})
+			.then($template => {
+				pageTemplateCache[route.pattern] = $template;
+				return $template;
+			});
+	},
+
+	// Once a page has been fetched and rendered from its template, it needs attaching to the DOM. Use this options to control where it gets inserted.
+	attachMarkup: $html => document.body.appendChild($html),
+
+	// This method can be used to perform any common DOM manipulation or attaching of event listener that you'd like to perform on all fetched pages
+	prepareMarkup: $html => { },
+```
+
