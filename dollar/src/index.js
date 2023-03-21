@@ -5,3 +5,6 @@ import * as utilities from './utilities.js'
 
 if(window)
 	window.$ = querySelector.$;
+
+let $ = querySelector.$ 
+export { $ as $ }
