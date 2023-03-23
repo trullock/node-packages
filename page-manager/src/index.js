@@ -128,11 +128,9 @@ function showPage(url, data, event) {
 	var route = router.parse(url);
 	if (route == null) {
 		console.error(`Can't find page: '${url}'`);
+		
 		let page404 = pageHash[options.error404PageName];
-		if(!page404)
-			return Promise.reject(new PageShowError('/', `Can't find page: '${url}'. Also can't find 404 page: '${options.error404PageName}'`, {}, 'replace'));
-
-		return Promise.reject(new PageShowError(page404.url, `Can't find page: '${url}'`, {}, 'show'));
+		route = router.parse(page404.url)
 	}
 
 	data = data || {};
@@ -248,6 +246,10 @@ function handleHistoryAction(event, url, data, page) {
 	}
 	else if (event.action == 'replace') {
 		// TODO: this case may be buggy
+
+		// BUG: you can replace the current state with the same url as the previous state, which shouldnt be allowed, 
+		// you cant have the same url in the history twice (next to each other).
+		// Update this to check for such a case and handle it
 
 		let currentUid = stack[stackPointer].uid;
 		window.history.replaceState({ uid: currentUid }, null, url);

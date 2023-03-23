@@ -6,6 +6,7 @@ import page2 from './page-page2.js'
 import page3 from './page-page3.js'
 import page4 from './page-page4.js'
 import page404 from './page-page404.js'
+import pageShowFail from './page-show-fail.js'
 
 window.addEventListener('DOMContentLoaded', function () {
 	pageManager.init({
