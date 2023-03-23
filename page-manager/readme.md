@@ -278,6 +278,21 @@ pageManager.registerPage('secure-page', '/secure-page', class extends Page {
 		static requireAuth = true;
 })
 ```
+
+#### Goals
+
+After being interrupted for authentication, you probably want to continue the user to where they were previously trying to get to (e.g. after signing in). To do this, use the following:
+
+```
+navigate('goal', { 
+	// optional
+	fallback: '/fallback/url'
+})
+```
+
+In the case that were was no goal (i.e. you went directly to the current page, it wasnt shown as an interruption) then the user will be navigated to the `fallack` url option. If you don't specify this then they will be sent to `'/'`.
+
+
 ### Fetching page content
 
 PageManager is built so that it can lazily fetch page markup. To do this, use the following options:
