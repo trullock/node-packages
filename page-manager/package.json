@@ -1,6 +1,6 @@
 {
   "name": "@trullock/page-manager",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Single page app manager",
   "exports": {
     ".": "./src/index.js"
@@ -8,8 +8,8 @@
   "module": "./src/index.js",
   "type": "module",
   "scripts": {
-	"build": "webpack --mode=development",
-    "tests": "node tests/tests.js"
+    "build": "webpack --mode=development",
+    "tests": "node ./tests/tests.js"
   },
   "author": "",
   "license": "ISC",

@@ -279,7 +279,6 @@ function doNavigate(url, data) {
 }
 
 function storageAvailable() {
-	return false;
     try {
         var x = '__storage_test__';
         window.sessionStorage.setItem(x, x);
@@ -440,7 +439,7 @@ export async function init(opts) {
 
 	if(storageAvailable())
 	{
-		window.addEventListener("beforeHide", () => {
+		window.addEventListener("beforeunload", () => {
 
 			let stackToSerialize = stack.map(s => ({
 				uid: s.uid,
