@@ -60,7 +60,7 @@ export function registerPage(argA, argB, argC) {
 		router.addRoute(name, route, pageClass);
 
 		pageHash[name] = {
-			url: route,
+			route: route,
 			pageClass: pageClass
 		}
 	}
@@ -83,14 +83,14 @@ export function refresh() {
 // TODO: 404 and error too?
 function initLoading()
 {
-	var page = pageHash[options.loadingPageName];
-	var route = router.parse(page.url);
+	var entry = pageHash[options.loadingPageName];
+	var route = router.parse(entry.route);
 	return loadPage(route, {});
 }
 
 function showLoading() {
-	var page = pageHash[options.loadingPageName];
-	var route = router.parse(page.url);
+	var pageLookup = pageHash[options.loadingPageName];
+	var route = router.parse(pageLookup.route);
 	var data = {
 		route: route,
 		scrollY: window.scrollY,
@@ -99,9 +99,16 @@ function showLoading() {
 		}
 	};
 
-	var page = pageCache[page.url].page;
+	var page = pageCache[route.pattern].page;
 
 	return Promise.resolve(page.show(data));
+}
+
+function hideLoading() {
+	var pageLookup = pageHash[options.loadingPageName];
+	var route = router.parse(pageLookup.route);
+	var page = pageCache[route.pattern].page;
+	return Promise.resolve(page.hide());
 }
 
 function loadPage(route, data) {
@@ -112,12 +119,14 @@ function loadPage(route, data) {
 		var $html = $template.cloneNode(true);
 		options.prepareMarkup($html);
 		options.attachMarkup($html);
-		pageCache[route.path] = {
-			$html,
-			page: new (route.pageClass)($html)
-		}
 
-		var page = pageCache[route.path].page;
+		let page = new (route.pageClass)($html);
+
+		let cacheKey = page.cacheMarkupBy == 'path' ? route.path : route.pattern;
+		pageCache[cacheKey] = {
+			$html,
+			page
+		}
 		
 		let booted = new Promise(resolve => resolve(page.boot(data)));
 		return booted.then(() => page);
@@ -130,7 +139,7 @@ function showPage(url, data, event) {
 		console.error(`Can't find page: '${url}'`);
 		
 		let page404 = pageHash[options.error404PageName];
-		route = router.parse(page404.url)
+		route = router.parse(page404.route)
 	}
 
 	data = data || {};
@@ -155,6 +164,9 @@ function showPage(url, data, event) {
 	var getPage = showLoading().then(() => {
 		if (pageCache[route.path])
 			return pageCache[route.path].page;
+
+		if (pageCache[route.pattern])
+			return pageCache[route.pattern].page;
 
 		return loadPage(route, data)
 	});
@@ -209,26 +221,23 @@ function showPage(url, data, event) {
 			// });
 }
 
-function doShow(page, data) {
+async function doShow(page, data) {
 
 	window.scroll(0, 0);
 
-	return Promise.resolve(page.show(data))
-			.then(() => document.title = page.title)
-			// todo: hide() should be passed an event object
-			.then(() => pageCache[pageHash[options.loadingPageName].url].page.hide())
-			// return page
-			.then(() => page);
+	await Promise.resolve(page.show(data));
+	document.title = page.title;
+	await hideLoading();
+	return page;
 }
 
 
 async function doUpdate(page, data) {
 
 	await Promise.resolve(page.update(data));
-
 	document.title = page.title
 	// todo: hide() should be passed an event object
-	await pageCache[pageHash[options.loadingPageName].url].page.hide()
+	await hideLoading();
 	return page;
 }
 
@@ -584,13 +593,13 @@ export function removeHistory(predicate)
 }
 
 export function purgeCache() {
-	for (const path in pageCache)
+	for (const key in pageCache)
 	{
-		pageCache[path].page.destroy && pageCache[path].page.destroy();
-		if (!pageCache[path].page.constructor.existingDomSelector)
+		pageCache[key].page.destroy && pageCache[key].page.destroy();
+		if (!pageCache[key].page.constructor.existingDomSelector)
 		{
-			pageCache[path].$html.remove();
-			delete pageCache[path];
+			pageCache[key].$html.remove();
+			delete pageCache[key];
 		}
 	}
 }

@@ -5,6 +5,8 @@ export default class Page {
 		this.visible = false;
 	}
 
+	cacheMarkupBy = 'route'
+
 	invalidateCache(){
 		// TODO: pagemanager doesnt currently read this
 		this.dirty = true;
