@@ -31,11 +31,16 @@ window.addEventListener('DOMContentLoaded', function () {
 
 		var href = $a.pathname + $a.search + $a.hash;
 		pageManager.navigate(href)
-
+		
 		e.preventDefault();
 	}, false);
 
 	document.querySelector('.btnStack').addEventListener('click', e => {
 		pageManager.printStack();
 	})
+
+	
+	window.addEventListener("page-manager.url-changed", e => {
+		console.log(e.detail.url);
+	});
 });

@@ -324,3 +324,14 @@ PageManager is built so that it can lazily fetch page markup. To do this, use th
 	prepareMarkup: $html => { },
 ```
 
+## Events
+
+When the URL has changed (including the first-load of the page), a custom DOM event is fired.
+
+```
+	window.addEventListener("page-manager.url-changed", e => {
+		console.log(e.detail.url);
+	});
+```
+
+This can be useful for update the active link in navigations, for example.

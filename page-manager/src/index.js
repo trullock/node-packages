@@ -80,6 +80,16 @@ export function refresh() {
 	showPage(frame.data.route.url, frame.data, 'replace');
 }
 
+function emitUrlChanged(url)
+{
+	window.dispatchEvent(new CustomEvent('page-manager.url-changed', { 
+		detail: {
+			url: url
+		},
+		bubbles: true
+	}))
+}
+
 // TODO: 404 and error too?
 function initLoading()
 {
@@ -246,7 +256,8 @@ function handleHistoryAction(event, url, data, page) {
 		let newUid = stack[stackPointer].uid + 1;
 
 		window.history.pushState({ uid: newUid }, null, url);
-		
+		emitUrlChanged(url);
+
 		// remove future
 		stack.splice(stackPointer + 1, stack.length - stackPointer);
 
@@ -262,7 +273,8 @@ function handleHistoryAction(event, url, data, page) {
 
 		let currentUid = stack[stackPointer].uid;
 		window.history.replaceState({ uid: currentUid }, null, url);
-		
+		emitUrlChanged(url);
+
 		stack.pop();
 		stack.push({ uid: currentUid, data, page });
 	}
@@ -334,12 +346,13 @@ export async function init(opts) {
 	await initLoading();
 	
 	// set initial page
+	emitUrlChanged(window.location.pathname + window.location.search + window.location.hash);
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
 		console.error(e);
 		
 		if (e instanceof PageShowError)
 		{
-			return showPage(e.url, e.data, { action: stackPointer == -1 ? 'load' : e.action || 'show' }).then(page => {
+			return showPage(e.url, e.data, { action: 'load', distance: 0 }).then(page => {
 				if(e.action == 'replace')
 					handleHistoryAction({ action: e.action }, e.url, e.data, page);
 				return page;
@@ -358,6 +371,8 @@ export async function init(opts) {
 		if (direction == 'back')
 			Object.assign(context.data, backData);
 		backData = {};
+
+		emitUrlChanged(context.data.route.url);
 
 		showPage(context.data.route.url, context.data, { action: direction, distance }).catch(e => {
 			console.error(e);
@@ -577,6 +592,10 @@ export function removeHistory(predicate)
 				else
 					window.history.pushState({ uid: currentState.uid }, null, currentState.data.route.url);
 				
+				window.dispatchEvent(new CustomEvent('page-manager.url-changed', { 
+					url: currentState.data.route.url
+				}))
+
 					// TODO: this doesnt seem to work when k=0
 				document.title = currentState.page.title;
 
