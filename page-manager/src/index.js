@@ -508,7 +508,7 @@ export function navigate(url, data, checkBeforeHide = true) {
 	if (checkBeforeHide === true && stack[stackPointer].page.beforeHide && options.beforeHide) {
 
 		var interrupt = stack[stackPointer].page.beforeHide();
-		if (interrupt !== false) {
+		if (interrupt) {
 			options.beforeHide(interrupt).then(result => {
 				if (result)
 					doNavigate(url, data);
