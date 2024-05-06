@@ -109,15 +109,14 @@ function showLoading() {
 		}
 	};
 
-	var page = pageCache[route.pattern].page;
-
+	var page = (pageCache[route.path] || pageCache[route.pattern]).page;
 	return Promise.resolve(page.show(data));
 }
 
 function hideLoading() {
 	var pageLookup = pageHash[options.loadingPageName];
 	var route = router.parse(pageLookup.route);
-	var page = pageCache[route.pattern].page;
+	var page = (pageCache[route.path] || pageCache[route.pattern]).page;
 	return Promise.resolve(page.hide());
 }
 
