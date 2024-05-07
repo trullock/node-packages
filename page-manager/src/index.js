@@ -504,7 +504,7 @@ export function navigate(url, data, checkBeforeHide = true) {
 
 	url = expandOnlyHash(url);
 
-	if (checkBeforeHide === true && stack[stackPointer].page.beforeHide && options.beforeHide) {
+	if (checkBeforeHide === true && options.beforeHide && stack[stackPointer].page.beforeHide) {
 
 		var interrupt = stack[stackPointer].page.beforeHide();
 		if (interrupt) {
