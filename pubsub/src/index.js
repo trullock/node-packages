@@ -36,19 +36,14 @@ class Queue {
 
 var handlers = {};
 var queue = new Queue();
-var processing = null;
 
-function processQueue() {
-	if(processing)
-		return;
-
+async function processQueue() {
 	let promises = []
 	while (!queue.isEmpty()) {
 		var action = queue.dequeue();
 		promises.push(action.call(null));
 	}
-	processing = Promise.allSettled(promises);
-	processing.finally(() => processing = null)
+	await Promise.allSettled(promises);
 }
 
 function enqueue(handler, args) {
@@ -66,16 +61,15 @@ function enqueue(handler, args) {
 	});
 }
 
-
 let errorHandler = function (error, handler, args)
 {
 	console.error('PubSub: Error executing pubsub subscriber', error, handler, args);
 }
+
 export function setErrorHandler(fn)
 {
 	errorHandler = fn;
 }
-
 
 let log = function (message, args)
 {
@@ -88,7 +82,7 @@ export function setLogger(fn)
 }
 
 
-export function subscribe (type, func, name) {
+export function subscribe(type, func, name) {
 	if (!handlers[type])
 		handlers[type] = [];
 
@@ -104,7 +98,7 @@ export function subscribe (type, func, name) {
 	return this;
 };
 
-export function subscribeOnce (type, func, name) {
+export function subscribeOnce(type, func, name) {
 	var handler = function () {
 		unsubscribe(handler);
 
@@ -113,12 +107,18 @@ export function subscribeOnce (type, func, name) {
 	subscribe(type, handler, name);
 };
 
-export function publish (type) {
-	var args = [];
-	for (var j = 1; j < arguments.length; j++) {
-		args.push(arguments[j]);
-	}
 
+export function subscribeTemporarily(type, func, name) {
+	var handler = function () {
+		let result = func.apply(null, arguments);
+		if(result === true)
+			unsubscribe(handler);
+	};
+	subscribe(type, handler, name);
+};
+
+
+export function publish(type, ...args) {
 	log(`PubSub: Publishing event '${type}`, args)
 
 	if (!handlers[type])
@@ -127,19 +127,17 @@ export function publish (type) {
 	for (var i = 0; i < handlers[type].length; i++)
 		enqueue(handlers[type][i], args);
 	
-	processQueue();
-
-	return processing;
+	return processQueue();
 };
 
-export function unsubscribeAll (type) {
+export function unsubscribeAll(type) {
 	if (type)
 		delete handlers[type]
 	else
 		handlers = {};
 };
 
-export function unsubscribe (handler) {
+export function unsubscribe(handler) {
 	for (var type in handlers) {
 		for (var i = 0; i < handlers[type].length; i++) {
 			if (handlers[type][i].func === handler) {
