@@ -328,7 +328,11 @@ export async function init(opts) {
 
 	// handle pages whose markup is already loaded in the page
 	for (var key in pageHash) {
-		if (pageHash[key].pageClass.existingDomSelector) {
+		if (pageHash[key].pageClass.existingDomSelector !== undefined) {
+			
+			if(pageHash[key].pageClass.existingDomSelector === null)
+				continue;
+
 			let $html = document.querySelector(pageHash[key].pageClass.existingDomSelector)
 			if(!$html)
 			{
