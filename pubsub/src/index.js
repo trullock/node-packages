@@ -43,7 +43,7 @@ async function processQueue() {
 		var action = queue.dequeue();
 		promises.push(action.call(null));
 	}
-	await Promise.allSettled(promises);
+	return await Promise.allSettled(promises);
 }
 
 function enqueue(handler, args) {
@@ -122,7 +122,7 @@ export function publish(type, ...args) {
 	log(`PubSub: Publishing event '${type}`, args)
 
 	if (!handlers[type])
-		return;
+		return [];
 
 	for (var i = 0; i < handlers[type].length; i++)
 		enqueue(handlers[type][i], args);

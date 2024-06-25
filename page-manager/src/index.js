@@ -131,7 +131,7 @@ function loadPage(route, data) {
 
 		let page = new (route.pageClass)($html);
 
-		let cacheKey = page.cacheMarkupBy == 'path' ? route.path : route.pattern;
+		let cacheKey = route.pageClass.cacheMarkupBy == 'path' ? route.path : route.pattern;
 		pageCache[cacheKey] = {
 			$html,
 			page

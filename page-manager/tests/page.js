@@ -1,8 +1,6 @@
 export default class Page {
 
-	dirty = false;
-
-	cacheMarkupBy = 'route'
+	static cacheMarkupBy = 'route'
 	
 	constructor($page){
 		this.$page = $page;
