@@ -1,6 +1,10 @@
 import * as Bus from '../src/index.js'
 
 
+Bus.subscribe('*', function(e) {
+	console.log("this:", this)
+})
+
 Bus.subscribe('asyncawait', function() {
 	return new Promise(r => {
 		console.log('a');

@@ -46,12 +46,15 @@ async function processQueue() {
 	return await Promise.allSettled(promises);
 }
 
-function enqueue(handler, args) {
+function enqueue(type, handler, args) {
 	queue.enqueue(function () {
 		try
 		{
 			log(`PubSub:	Executing handler '${handler.name || '<anon>'}'`, args)
-			return Promise.resolve(handler.func.apply(null, args));
+			return Promise.resolve(handler.func.apply({
+				handlerName: handler.name,
+				eventType: type
+			}, args));
 		}
 		catch(e)
 		{
@@ -102,7 +105,7 @@ export function subscribeOnce(type, func, name) {
 	var handler = function () {
 		unsubscribe(handler);
 
-		func.apply(null, arguments);
+		func.apply(this, arguments);
 	};
 	subscribe(type, handler, name);
 };
@@ -110,7 +113,7 @@ export function subscribeOnce(type, func, name) {
 
 export function subscribeTemporarily(type, func, name) {
 	var handler = function () {
-		let result = func.apply(null, arguments);
+		let result = func.apply(this, arguments);
 		if(result === true)
 			unsubscribe(handler);
 	};
@@ -121,11 +124,16 @@ export function subscribeTemporarily(type, func, name) {
 export function publish(type, ...args) {
 	log(`PubSub: Publishing event '${type}`, args)
 
-	if (!handlers[type])
-		return [];
+	let currentHandlers = []
 
-	for (var i = 0; i < handlers[type].length; i++)
-		enqueue(handlers[type][i], args);
+	if (handlers[type])
+		currentHandlers = currentHandlers.concat(handlers[type])
+	
+	if (handlers['*'])
+		currentHandlers = currentHandlers.concat(handlers['*'])
+
+	for (var i = 0; i < currentHandlers.length; i++)
+		enqueue(type, currentHandlers[i], args);
 	
 	return processQueue();
 };
