@@ -120,26 +120,27 @@ function hideLoading() {
 	return Promise.resolve(page.hide());
 }
 
-function loadPage(route, data) {
+async function loadPage(route, data) {
 
 	var fetchPage = pageTemplateCache[route.pattern] ? Promise.resolve(pageTemplateCache[route.pattern]) : options.fetchPageTemplate(route);
 
-	return fetchPage.then($template => {
-		var $html = $template.cloneNode(true);
-		options.prepareMarkup($html);
-		options.attachMarkup($html);
+	const $template = await fetchPage;
 
-		let page = new (route.pageClass)($html);
-
-		let cacheKey = route.pageClass.cacheMarkupBy == 'path' ? route.path : route.pattern;
-		pageCache[cacheKey] = {
-			$html,
-			page
-		}
-		
-		let booted = new Promise(resolve => resolve(page.boot(data)));
-		return booted.then(() => page);
-	});
+	var $html = $template.cloneNode(true);
+	options.prepareMarkup($html);
+	options.attachMarkup($html);
+	
+	let page = new (route.pageClass)($html);
+	
+	await Promise.resolve(page.boot(data));
+	
+	let cacheKey = route.pageClass.cacheMarkupBy == 'path' ? route.path : route.pattern;
+	pageCache[cacheKey] = {
+		$html,
+		page
+	};
+	
+	return page;
 }
 
 function showPage(url, data, event) {
