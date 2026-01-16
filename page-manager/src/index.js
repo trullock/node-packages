@@ -14,19 +14,18 @@ var goal = null;
 var backData = {};
 var options = {
 	fetchPath: route => '/pages/' + route.routeName + '.html',
-	fetchPageTemplate: route => {
-		return fetch(options.fetchPath(route))
-			.then(r => r.text())
-			.then(html => {
-				var $div = document.createElement('div');
-				$div.innerHTML = html;
-				// Pages are assumed to have a single wrapping element
-				return $div.firstElementChild;
-			})
-			.then($template => {
-				pageTemplateCache[route.pattern] = $template;
-				return $template;
-			});
+	fetchPageTemplate: async route => {
+		const response = await fetch(options.fetchPath(route));
+		const html = await response.text();
+		
+		var $div = document.createElement('div');
+		$div.innerHTML = html;
+		const $template = $div.firstElementChild;
+
+		// TODO: why is this in here and not in the caller?
+		pageTemplateCache[route.pattern] = $template;
+
+		return $template;
 	},
 	pageInterrupt: route => null,
 	attachMarkup: $html => document.body.appendChild($html),
@@ -143,7 +142,7 @@ async function loadPage(route, data) {
 	return page;
 }
 
-function showPage(url, data, event) {
+async function showPage(url, data, event) {
 	var route = router.parse(url);
 	if (route == null) {
 		console.error(`Can't find page: '${url}'`);
@@ -164,63 +163,63 @@ function showPage(url, data, event) {
 	};
 	data.event = event;
 
-	let interrupt = options.pageInterrupt(route);
+	let interrupt = await Promise.resolve(options.pageInterrupt(route));
 	if(interrupt)
 	{
 		goal = { url, data };
 		return showPage(interrupt.url, null, event);
 	}
 	
-	var getPage = showLoading().then(() => {
-		if (pageCache[route.path])
-			return pageCache[route.path].page;
+	await showLoading();
 
-		if (pageCache[route.pattern])
-			return pageCache[route.pattern].page;
-
-		return loadPage(route, data)
-	});
+	var getPage = null
+	if (pageCache[route.path])
+		getPage = pageCache[route.path].page;
+	else if (pageCache[route.pattern])
+		getPage = pageCache[route.pattern].page;
+	else
+		getPage = loadPage(route, data)
 
 	// handle initial page
 	if (event.action == 'load')
 	{
-		return getPage
-					.then(page => doShow(page, data))
-					.then(page => {
-						// clean initial load
-						if(stackPointer == -1)
-						{
-							stack.push({ uid: 0, data, page });
-							stackPointer = 0;
-						}
-						// page refresh
-						else
-						{
-							stack[stackPointer].page = page;
-							stack[stackPointer].data = data;
-						}
-						return page;
-					});
+		const page = await getPage;
+		await doShow(page, data);
+		await hideLoading();
+
+		// clean initial load
+		if (stackPointer == -1) {
+			stack.push({ uid: 0, data, page });
+			stackPointer = 0;
+		}
+
+		// page refresh
+		else {
+			stack[stackPointer].page = page;
+			stack[stackPointer].data = data;
+		}
+		return page;
 	}
 
 	let currentState = stack[stackPointer];
 
 	if (currentState.data.route.path == route.path) {
 		handleHistoryAction(event, url, data, currentState.page);
-		return getPage.then(page => doUpdate(page, data));
+		const page = await getPage;
+		await doUpdate(page, data);
+		await hideLoading();
+		return page;
 	}
 
 	currentState.data.scrollY = window.scrollY;
 
-	return Promise.all([
-			currentState.page.hide(event),
-			getPage
-		])
-			.then(results => results[1])
-			.then(page => {
-				handleHistoryAction(event, url, data, page);
-				return doShow(page, data);
-			});
+	const results = await Promise.all([
+		currentState.page.hide(event),
+		getPage
+	]);
+	const page = results[1];
+	handleHistoryAction(event, url, data, page);
+	await doShow(page, data);
 			// .catch(e => {
 			// 	// TODO: what case is this?
 			// 	manuallyAdjustingHistory = () => manuallyAdjustingHistory = false;
@@ -229,6 +228,8 @@ function showPage(url, data, event) {
 			// 	else if (event.action == 'fwd')
 			// 		history.go(-1);
 			// });
+	await hideLoading();
+	return page
 }
 
 async function doShow(page, data) {
@@ -237,18 +238,12 @@ async function doShow(page, data) {
 
 	await Promise.resolve(page.show(data));
 	document.title = page.title;
-	await hideLoading();
-	return page;
 }
-
 
 async function doUpdate(page, data) {
 
 	await Promise.resolve(page.update(data));
 	document.title = page.title
-	// todo: hide() should be passed an event object
-	await hideLoading();
-	return page;
 }
 
 function handleHistoryAction(event, url, data, page) {
