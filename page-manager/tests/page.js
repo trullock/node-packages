@@ -1,6 +1,6 @@
-export default class Page {
+export const cacheMarkupBy = 'route'
 
-	static cacheMarkupBy = 'route'
+export default class Page {
 	
 	constructor($page){
 		this.$page = $page;

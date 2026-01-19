@@ -1,38 +1,45 @@
 import PatternLexer from './pattern-lexer.js'
 
-function isKind(val, kind) {
+function isKind(val, kind)
+{
 	return '[object ' + kind + ']' === Object.prototype.toString.call(val);
 }
-function isRegExp(val) {
+
+function isRegExp(val)
+{
 	return isKind(val, 'RegExp');
 }
 
-function decodeQueryString(queryStr, shouldTypecast) {
-	var queryArr = (queryStr || '').replace('?', '').split('&'),
-		reg = /([^=]+)=(.+)/,
+function decodeQueryString(queryStr)
+{
+	let queryArr = (queryStr || '').replace('?', '').split('&'),
 		i = -1,
 		obj = {},
 		equalIndex, cur, pValue, pName;
 
-	while ((cur = queryArr[++i])) {
+	while ((cur = queryArr[++i]))
+	{
 		equalIndex = cur.indexOf('=');
 		pName = cur.substring(0, equalIndex);
 		pValue = decodeURIComponent(cur.substring(equalIndex + 1));
 
-		if (pName in obj){
-			if(isArray(obj[pName])){
+		if (pName in obj)
+		{
+			if(isArray(obj[pName]))
 				obj[pName].push(pValue);
-			} else {
+			else
 				obj[pName] = [obj[pName], pValue];
-			}
-		} else {
+			
+		}
+		else
+		{
 			obj[pName] = pValue;
 	   }
 	}
 	return obj;
 }
 
-function Route(name, pattern, pageClass, priority, router) {
+function Route(name, pattern, data, priority, router) {
 	var isRegexPattern = isRegExp(pattern);
 	this._name = name;
 	this._router = router;
@@ -40,7 +47,7 @@ function Route(name, pattern, pageClass, priority, router) {
 	this._paramsIds = isRegexPattern ? null : router.patternLexer.getParamIds(pattern);
 	this._optionalParamsIds = isRegexPattern ? null : router.patternLexer.getOptionalParamsIds(pattern);
 	this._matchRegexp = isRegexPattern ? pattern : router.patternLexer.compilePattern(pattern, router.ignoreCase);
-	this._pageClass = pageClass;
+	this._data = data;
 	this._priority = priority || 0;
 }
 
@@ -147,22 +154,26 @@ Route.prototype = {
 };
 
 
-export default new class {
-	constructor() {
+export default new class
+{
+	constructor()
+	{
 		this.routes = [];
 		this.routesByName = {};
 		this.patternLexer = PatternLexer();
 	}
 
-	addRoute (name, pattern, pageClass, priority) {
+	addRoute (name, pattern, data, priority)
+	{
 		pattern += pattern.endsWith('/') ? ':?query:' : '/:?query:';
-		var route = new Route(name, pattern, pageClass, priority, this);
+		var route = new Route(name, pattern, data, priority, this);
 
 		var n = this.routes.length;
 		do
 		{ 
 			--n; 
 		} while (this.routes[n] && route._priority <= this.routes[n]._priority);
+
 		this.routes.splice(n + 1, 0, route);
 
 		this.routesByName[name] = route;
@@ -171,14 +182,16 @@ export default new class {
 		return route;
 	}
 
-	interpolate(name, data){
+	interpolate(name, data)
+	{
 		if(!this.routesByName[name])
 			throw new Error(`Cannot find route by name ${name}`);
 			
 		return this.routesByName[name].interpolate(data);
 	}
 
-	parse (request) {
+	parse (request)
+	{
 		var n = this.routes.length;
 		var route, hash, path;
 
@@ -195,17 +208,18 @@ export default new class {
 		else
 			path = request;	
 		
-
-		while (route = this.routes[--n]) {
-			if (route.match(request)) {
+		while (route = this.routes[--n])
+		{
+			if (route.match(request))
+			{
 				var params = route._getParamsObject(request);
 				params.hash = hash;
 
 				return {
 					path: path.toLowerCase(),
-					routeName: route._name,
+					name: route._name,
 					pattern: route._pattern,
-					pageClass: route._pageClass,
+					data: route._data,
 					params: params
 				};
 			}
@@ -214,7 +228,8 @@ export default new class {
 		return null;
 	}
 
-	toString () {
+	toString ()
+	{
 		return '[Router numRoutes:' + this.getNumRoutes() + ']';
 	}
 }();

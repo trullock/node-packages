@@ -5,8 +5,6 @@ export default class Page {
 		this.visible = false;
 	}
 
-	static cacheMarkupBy = 'route'
-
 	_title = null;
 	get title() {
 		return this._title;

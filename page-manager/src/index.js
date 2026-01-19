@@ -1,7 +1,6 @@
 import router from '@trullock/router';
 
-var pageHash = {},
-	pageCache = {},
+var pageCache = {},
 	pageTemplateCache = {},
 	stack = [],
 	stackPointer = -1;
@@ -13,21 +12,7 @@ var lastNavigationDirection = null;
 var goal = null;
 var backData = {};
 var options = {
-	fetchPath: route => '/pages/' + route.routeName + '.html',
-	fetchPageTemplate: async route => {
-		const response = await fetch(options.fetchPath(route));
-		const html = await response.text();
-		
-		var $div = document.createElement('div');
-		$div.innerHTML = html;
-		const $template = $div.firstElementChild;
-
-		// TODO: why is this in here and not in the caller?
-		pageTemplateCache[route.pattern] = $template;
-
-		return $template;
-	},
-	pageInterrupt: route => null,
+	pageInterrupt: routeResult => null,
 	attachMarkup: $html => document.body.appendChild($html),
 	prepareMarkup: $html => { },
 	loadingPageName: 'loading',
@@ -36,35 +21,22 @@ var options = {
 	beforeHide: null
 }
 
-export const pages = pageHash;
+export function registerPage(opts) {
 
-export function registerPage(argA, argB, argC) {
-
-	let namedRoutes = null, 
-		pageClass = null;
-
-	if(argC == undefined)
-	{
-		namedRoutes = argA;
-		pageClass = argB;
-	} else {
-		namedRoutes = {
-			[argA]: argB
-		};
-		pageClass = argC;
-	}
-	
+	let loadPageClass = opts.pageClass || opts.pageClassLoader;
+	let namedRoutes = opts.namedRoutes || { [opts.name]: opts.route };
+	let auth = opts.auth || null;
+	let cacheMarkupBy = opts.cacheMarkupBy || 'path'
 
 	for (const [name, route] of Object.entries(namedRoutes)) {
-		router.addRoute(name, route, pageClass);
-
-		pageHash[name] = {
-			route: route,
-			pageClass: pageClass
-		}
+		router.addRoute(name, route, {
+			route,
+			auth,
+			loadPageClass,
+			loadMarkup: opts.loadMarkup,
+			cacheMarkupBy
+		});
 	}
-
-	return pageClass;
 }
 
 export function getPath(name, values) {
@@ -92,13 +64,13 @@ function emitUrlChanged(url)
 // TODO: 404 and error too?
 function initLoading()
 {
-	var entry = pageHash[options.loadingPageName];
+	var entry = router.routesByName(options.loadingPageName);
 	var route = router.parse(entry.route);
 	return loadPage(route, {});
 }
 
 function showLoading() {
-	var pageLookup = pageHash[options.loadingPageName];
+	var pageLookup = router.routesByName(options.loadingPageName);
 	var route = router.parse(pageLookup.route);
 	var data = {
 		route: route,
@@ -113,27 +85,28 @@ function showLoading() {
 }
 
 function hideLoading() {
-	var pageLookup = pageHash[options.loadingPageName];
+	var pageLookup = router.routesByName(options.loadingPageName);
 	var route = router.parse(pageLookup.route);
 	var page = (pageCache[route.path] || pageCache[route.pattern]).page;
 	return Promise.resolve(page.hide());
 }
 
-async function loadPage(route, data) {
-
-	var fetchPage = pageTemplateCache[route.pattern] ? Promise.resolve(pageTemplateCache[route.pattern]) : options.fetchPageTemplate(route);
-
-	const $template = await fetchPage;
+async function loadPage(routeResult, data)
+{
+	if(!pageTemplateCache[routeResult.pattern])
+		pageTemplateCache[routeResult.pattern] = await routeResult.data.loadMarkup(routeResult);
+	let $template = pageTemplateCache[routeResult.pattern]
 
 	var $html = $template.cloneNode(true);
 	options.prepareMarkup($html);
 	options.attachMarkup($html);
 	
-	let page = new (route.pageClass)($html);
+	routeResult.data.pageClass = await Promise.resolve(routeResult.data.loadPageClass());
+	let page = new (routeResult.data.pageClass)($html);
 	
 	await Promise.resolve(page.boot(data));
 	
-	let cacheKey = route.pageClass.cacheMarkupBy == 'path' ? route.path : route.pattern;
+	let cacheKey = routeResult.data.cacheMarkupBy == 'path' ? routeResult.path : routeResult.pattern;
 	pageCache[cacheKey] = {
 		$html,
 		page
@@ -142,28 +115,29 @@ async function loadPage(route, data) {
 	return page;
 }
 
-async function showPage(url, data, event) {
-	var route = router.parse(url);
-	if (route == null) {
+async function showPage(url, data, event)
+{
+	var routeResult = router.parse(url);
+	if (routeResult == null) {
 		console.error(`Can't find page: '${url}'`);
 		
-		let page404 = pageHash[options.error404PageName];
-		route = router.parse(page404.route)
+		let page404 = router.routesByName(options.error404PageName);
+		routeResult = router.parse(page404.route)
 	}
 
 	data = data || {};
-	for (let key in route.params)
-		data[key] = route.params[key];
+	for (let key in routeResult.params)
+		data[key] = routeResult.params[key];
 
 	data.route = {
 		url: url,
-		path: route.path,
-		routeName: route.routeName,
-		params: route.params
+		path: routeResult.path,
+		name: routeResult.name,
+		params: routeResult.params
 	};
 	data.event = event;
 
-	let interrupt = await Promise.resolve(options.pageInterrupt(route));
+	let interrupt = await Promise.resolve(options.pageInterrupt(routeResult));
 	if(interrupt)
 	{
 		goal = { url, data };
@@ -173,12 +147,12 @@ async function showPage(url, data, event) {
 	await showLoading();
 
 	var getPage = null
-	if (pageCache[route.path])
-		getPage = pageCache[route.path].page;
-	else if (pageCache[route.pattern])
-		getPage = pageCache[route.pattern].page;
+	if (pageCache[routeResult.path])
+		getPage = pageCache[routeResult.path].page;
+	else if (pageCache[routeResult.pattern])
+		getPage = pageCache[routeResult.pattern].page;
 	else
-		getPage = loadPage(route, data)
+		getPage = loadPage(routeResult, data)
 
 	// handle initial page
 	if (event.action == 'load')
@@ -203,7 +177,7 @@ async function showPage(url, data, event) {
 
 	let currentState = stack[stackPointer];
 
-	if (currentState.data.route.path == route.path) {
+	if (currentState.data.route.path == routeResult.path) {
 		handleHistoryAction(event, url, data, currentState.page);
 		const page = await getPage;
 		await doUpdate(page, data);
@@ -319,26 +293,6 @@ export async function init(opts) {
 			stack = storedStack.stack;
 			stackPointer = storedStack.stackPointer;
 			window.sessionStorage.removeItem("stack");
-		}
-	}
-
-	// handle pages whose markup is already loaded in the page
-	for (var key in pageHash) {
-		if (pageHash[key].pageClass.existingDomSelector !== undefined) {
-			
-			if(pageHash[key].pageClass.existingDomSelector === null)
-				continue;
-
-			let $html = document.querySelector(pageHash[key].pageClass.existingDomSelector)
-			if(!$html)
-			{
-				console.error(`Unable to find DOM element '${pageHash[key].pageClass.existingDomSelector}' for page '${key}'`)
-				continue;
-			}
-			
-			// TODO: this is inefficient for non parameterised routes. There will always be HTML in memory and then copied for the page once loaded
-			pageTemplateCache[router.routesByName[key]._pattern] = $html;
-			$html.parentElement.removeChild($html);	
 		}
 	}
 

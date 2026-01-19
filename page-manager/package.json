@@ -1,6 +1,6 @@
 {
   "name": "@trullock/page-manager",
-  "version": "0.14.4",
+  "version": "1.0.0",
   "description": "Single page app manager",
   "exports": {
     ".": "./src/index.js"
@@ -17,7 +17,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@trullock/router": "^0.2.5"
+    "@trullock/router": "^1.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",

@@ -12,7 +12,7 @@ import pageShowFail from './page-show-fail.js'
 window.addEventListener('DOMContentLoaded', function () {
 	pageManager.init({
 		pageContainer: () => document.body,
-		fetchPath: route => '/pages/' + route.routeName + '.htm',
+		fetchPath: route => '/pages/' + route.name + '.htm',
 		error404PageName: 'page404',
 		beforeHide: message => new Promise(resolve => {
 			resolve(confirm(message))

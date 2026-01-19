@@ -8,16 +8,20 @@ Create a basic page like this:
 
 ```
 import {registerPage, Page} from '@trullock/page-manager';
-registerPage('view-thing', '/things/{thingId}', class extends Page {
-
+registerPage({
+	name: 'view-thing',
+	route: '/things/{thingId}',
+	pageClass: class extends Page { }
 });
 ```
 
-The first argument `'view-thing'` is the name of the page, this can be used to build/look-up its url later without needing to hardcode url strings everywhere
+`'view-thing'` is the name of the page, this can be used to build/look-up its url later without needing to hardcode url strings everywhere
 
-The second argument `'/things/{thingId}'` is the url (route) of the page
+`'/things/{thingId}'` is the url (route) of the page
 
-The third arguent is a class definition for the page.
+`pageClass` is a class definition for the page.
+
+This can by lazily loaded by providing `pageClassLoader: async () => { ... }` which returns the class type (not an instance of it)
 
 ### Routing
 
@@ -34,7 +38,11 @@ To build a URL from a route and some parameters, do this:
 ```
 import { getPath, registerPage } from '@trullock/page-manager';
 
-registerPage('view-thing', '/things/{thingId}', class extends Page { } );
+registerPage({
+	name: 'view-thing',
+	route: '/things/{thingId}',
+	pageClass: class extends Page { }
+});
 
 let url = getPath('view-thing', { thingId: 1 })
 // url == '/things/1'
@@ -298,12 +306,12 @@ In the case that were was no goal (i.e. you went directly to the current page, i
 PageManager is built so that it can lazily fetch page markup. To do this, use the following options:
 
 ```
-	// The path to make an HTTP request to to fetch the markup, given a route
-	fetchPath: route => '/pages/' + route.routeName + '.html',
-
-	// The fetch method, you probably dont want to mess with this implementation
-	fetchPageTemplate: route => {
-		return fetch(options.fetchPath(route))
+registerPage({
+	name: 'view-thing',
+	route: '/things/{thingId}',
+	pageClass: class extends Page { },
+	loadMarkup: routeResult => {
+		return fetch('/pages/' + routeResult.name + '.html')
 			.then(r => r.text())
 			.then(html => {
 				var $div = document.createElement('div');
@@ -312,10 +320,11 @@ PageManager is built so that it can lazily fetch page markup. To do this, use th
 				return $div.firstElementChild;
 			})
 			.then($template => {
-				pageTemplateCache[route.pattern] = $template;
+				pageTemplateCache[routeResult.pattern] = $template;
 				return $template;
 			});
-	},
+	}
+});
 
 	// Once a page has been fetched and rendered from its template, it needs attaching to the DOM. Use this options to control where it gets inserted.
 	attachMarkup: $html => document.body.appendChild($html),
