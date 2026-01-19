@@ -23,7 +23,7 @@ var options = {
 
 export function registerPage(opts) {
 
-	let loadPageClass = opts.pageClass || opts.pageClassLoader;
+	let loadPageClass = opts.pageClass ? (() => opts.pageClass) : opts.loadPageClass;
 	let namedRoutes = opts.namedRoutes || { [opts.name]: opts.route };
 	let auth = opts.auth || null;
 	let cacheMarkupBy = opts.cacheMarkupBy || 'path'
@@ -64,14 +64,14 @@ function emitUrlChanged(url)
 // TODO: 404 and error too?
 function initLoading()
 {
-	var entry = router.routesByName(options.loadingPageName);
-	var route = router.parse(entry.route);
+	var url = router.interpolate(options.loadingPageName, {});
+	var route = router.parse(url);
 	return loadPage(route, {});
 }
 
 function showLoading() {
-	var pageLookup = router.routesByName(options.loadingPageName);
-	var route = router.parse(pageLookup.route);
+	var url = router.interpolate(options.loadingPageName, {});
+	var route = router.parse(url);
 	var data = {
 		route: route,
 		scrollY: window.scrollY,
@@ -85,8 +85,8 @@ function showLoading() {
 }
 
 function hideLoading() {
-	var pageLookup = router.routesByName(options.loadingPageName);
-	var route = router.parse(pageLookup.route);
+	var url = router.interpolate(options.loadingPageName, {});
+	var route = router.parse(url);
 	var page = (pageCache[route.path] || pageCache[route.pattern]).page;
 	return Promise.resolve(page.hide());
 }
@@ -121,8 +121,8 @@ async function showPage(url, data, event)
 	if (routeResult == null) {
 		console.error(`Can't find page: '${url}'`);
 		
-		let page404 = router.routesByName(options.error404PageName);
-		routeResult = router.parse(page404.route)
+		let url = router.interpolate(options.error404PageName, {});
+		routeResult = router.parse(url)
 	}
 
 	data = data || {};
