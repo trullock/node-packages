@@ -25,16 +25,16 @@ export function registerPage(opts) {
 
 	let loadPageClass = opts.pageClass ? (() => opts.pageClass) : opts.loadPageClass;
 	let namedRoutes = opts.namedRoutes || { [opts.name]: opts.route };
-	let auth = opts.auth || null;
 	let cacheMarkupBy = opts.cacheMarkupBy || 'path'
+	let extra = opts.extra || {}
 
 	for (const [name, route] of Object.entries(namedRoutes)) {
 		router.addRoute(name, route, {
 			route,
-			auth,
 			loadPageClass,
 			loadMarkup: opts.loadMarkup,
-			cacheMarkupBy
+			cacheMarkupBy,
+			extra
 		});
 	}
 }
@@ -298,6 +298,11 @@ export async function init(opts) {
 
 	await initLoading();
 	
+	await showLoading();
+}
+
+export async function ready()
+{
 	// set initial page
 	emitUrlChanged(window.location.pathname + window.location.search + window.location.hash);
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
@@ -310,7 +315,6 @@ export async function init(opts) {
 					handleHistoryAction({ action: e.action }, e.url, e.data, page);
 				return page;
 			});
-			
 		}
 	});
 
