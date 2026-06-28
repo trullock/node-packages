@@ -236,16 +236,14 @@ function handleHistoryAction(event, url, data, page) {
 	else if (event.action == 'replace') {
 		// TODO: this case may be buggy
 
-		// BUG: you can replace the current state with the same url as the previous state, which shouldnt be allowed, 
-		// you cant have the same url in the history twice (next to each other).
+		// BUG: you can replace the current state with the same url as the previous state, which shouldnt be allowed.
 		// Update this to check for such a case and handle it
 
 		let currentUid = stack[stackPointer].uid;
 		window.history.replaceState({ uid: currentUid }, null, url);
 		emitUrlChanged(url);
 
-		stack.pop();
-		stack.push({ uid: currentUid, data, page });
+		stack[stackPointer] = { uid: currentUid, data, page };
 	}
 	else if(event.action == 'back')
 	{

@@ -9,10 +9,8 @@ import pageX from './page-pageX.js'
 import page404 from './page-page404.js'
 import pageShowFail from './page-show-fail.js'
 
-window.addEventListener('DOMContentLoaded', function () {
-	pageManager.init({
-		pageContainer: () => document.body,
-		fetchPath: route => '/pages/' + route.name + '.htm',
+window.addEventListener('DOMContentLoaded', async function () {
+	await pageManager.init({
 		error404PageName: 'page404',
 		beforeHide: message => new Promise(resolve => {
 			resolve(confirm(message))
@@ -43,4 +41,6 @@ window.addEventListener('DOMContentLoaded', function () {
 	window.addEventListener("page-manager.url-changed", e => {
 		console.log(e.detail.url);
 	});
+
+	await pageManager.ready()
 });

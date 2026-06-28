@@ -1,22 +1,28 @@
 import './page1.htm'
 import Page from './page.js';
 import {registerPage, refresh} from '@trullock/page-manager';
+import { loadMarkup } from './helpers.js';
 
-export default registerPage('page1', '/page1', class extends Page {
+export default registerPage({
+	name: 'page1', 
+	route: '/page1',
+	loadMarkup,
+	pageClass: class extends Page {
 
-	title = "Page 1";
+		title = "Page 1";
 
-	type = 'A';
+		type = 'A';
 
-	constructor($page) {
-		super($page);
+		constructor($page) {
+			super($page);
 
-		$page.querySelector('button').addEventListener('click', e => {
-			refresh();
-		})
-	}
+			$page.querySelector('button').addEventListener('click', e => {
+				refresh();
+			})
+		}
 
-	update(data) {
-		this.$page.querySelector('.js-time').textContent = new Date().getTime();
+		update(data) {
+			this.$page.querySelector('.js-time').textContent = new Date().getTime();
+		}
 	}
 });
