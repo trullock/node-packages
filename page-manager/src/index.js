@@ -7,7 +7,7 @@ var pageCache = {},
 
 var manuallyAdjustingHistory = false;
 var handlingBeforeHide = false;
-var lastNavigationDirection = null;
+var beforeHideNavDirection = null;
 
 var goal = null;
 var backData = {};
@@ -65,8 +65,8 @@ function emitUrlChanged(url)
 function initLoading()
 {
 	var url = router.interpolate(options.loadingPageName, {});
-	var route = router.parse(url);
-	return loadPage(route, {});
+	var routeResult = router.parse(url);
+	return loadPage(routeResult, {});
 }
 
 function showLoading() {
@@ -220,7 +220,7 @@ async function doUpdate(page, data) {
 	document.title = page.title
 }
 
-function handleHistoryAction(event, url, data, page) {
+async function handleHistoryAction(event, url, data, page) {
 	if (event.action == 'push') {
 		let newUid = stack[stackPointer].uid + 1;
 
@@ -233,17 +233,22 @@ function handleHistoryAction(event, url, data, page) {
 		stack.push({ uid: newUid, data, page });
 		stackPointer++;
 	}
-	else if (event.action == 'replace') {
-		// TODO: this case may be buggy
-
-		// BUG: you can replace the current state with the same url as the previous state, which shouldnt be allowed.
-		// Update this to check for such a case and handle it
-
+	else if (event.action == 'replace') 
+	{
 		let currentUid = stack[stackPointer].uid;
 		window.history.replaceState({ uid: currentUid }, null, url);
 		emitUrlChanged(url);
-
 		stack[stackPointer] = { uid: currentUid, data, page };
+		
+		if(stack[stackPointer].data.route.url == stack[stackPointer - 1]?.data?.route?.url)
+		{
+			let statesToKeep = [];
+			for (var i = 0; i < stackPointer - 1; i++)
+				statesToKeep.push(stack[i]);
+			statesToKeep.push(stack[stackPointer]);
+
+			await modifyHistory(statesToKeep);
+		}
 	}
 	else if(event.action == 'back')
 	{
@@ -295,7 +300,6 @@ export async function init(opts) {
 	}
 
 	await initLoading();
-	
 	await showLoading();
 }
 
@@ -308,18 +312,18 @@ export async function ready()
 		
 		if (e instanceof PageShowError)
 		{
-			return showPage(e.url, e.data, { action: 'load', distance: 0 }).then(page => {
+			return showPage(e.url, e.data, { action: 'load', distance: 0 }).then(async page => {
 				if(e.action == 'replace')
-					handleHistoryAction({ action: e.action }, e.url, e.data, page);
+					await handleHistoryAction({ action: e.action }, e.url, e.data, page);
 				return page;
 			});
 		}
 	});
 
-	function handlePopstate(context, direction, distance) {
+	async function handlePopstate(context, direction, distance) {
 
 		if (manuallyAdjustingHistory) {
-			manuallyAdjustingHistory(context, { action: direction, distance });
+			await manuallyAdjustingHistory(context, { action: direction, distance });
 			return;
 		}
 
@@ -339,7 +343,7 @@ export async function ready()
 		})
 	}
 
-	function handleBeforeHidePart1() {
+	function handleBeforeHidePart1(lastNavDirection) {
 		// if we're ignoring beforeHide this navigation
 		if (handlingBeforeHide === 'ignore') {
 			handlingBeforeHide = false;
@@ -348,6 +352,8 @@ export async function ready()
 
 		// if we have a before-unload confirm to show
 		if (stack[stackPointer].page.beforeHide && options.beforeHide && handlingBeforeHide === false) {
+			beforeHideNavDirection = lastNavDirection;
+
 			var interrupt = stack[stackPointer].page.beforeHide();
 			if (interrupt) {
 				handlingBeforeHide = 'step1';
@@ -355,9 +361,9 @@ export async function ready()
 				// do this in a new thread, you cant call history actions from inside a history-aciton-handler
 				window.setTimeout(() => {
 					// undo the navigation so the URL remains correct whilst we show the confirm dialog
-					if (lastNavigationDirection == 'fwd')
+					if (beforeHideNavDirection == 'fwd')
 						history.back();
-					else if (lastNavigationDirection == 'back')
+					else if (beforeHideNavDirection == 'back')
 						history.forward();
 				}, 1);
 
@@ -367,7 +373,10 @@ export async function ready()
 
 		// we've finished beforeHiding
 		if (handlingBeforeHide === 'step2')
+		{
 			handlingBeforeHide = false;
+			beforeHideNavDirection = null;
+		}
 
 		return false;
 	}
@@ -376,20 +385,26 @@ export async function ready()
 		if (handlingBeforeHide !== 'step1')
 			return false;
 
+		if(manuallyAdjustingHistory)
+			return false;
+
 		// do the beforeHide action, then...
 		options.beforeHide(stack[stackPointer].page.beforeHide()).then(result => {
 
 			// if the user confirmed, redo the original action
-			if (result) {
-
+			if (result)
+			{
 				handlingBeforeHide = 'step2';
 
-				if (lastNavigationDirection == 'fwd')
+				if (beforeHideNavDirection == 'fwd')
 					history.forward();
-				else if (lastNavigationDirection == 'back')
+				else if (beforeHideNavDirection == 'back')
 					history.back();
-			} else {
+			}
+			else
+			{
 				handlingBeforeHide = false;
+				beforeHideNavDirection = null;
 			}
 		});
 
@@ -397,23 +412,22 @@ export async function ready()
 	}
 
 	// listen for browser navigations
-	window.addEventListener("popstate", e => {
+	window.addEventListener("popstate", async e => {
+		let newUid = e.state?.uid || 0;
+		let previousUid = stack[stackPointer].uid;
+		let lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
+		let distance = Math.abs(newUid - previousUid);
+
 		var interrupted = handleBeforeHidePart2();
 		if (interrupted)
 			return;
 
-		let newUid = e.state?.uid || 0;
-		let previousUid = stack[stackPointer].uid;
-
-		lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
-		let distance = Math.abs(newUid - previousUid);
-
-		var interrupted = handleBeforeHidePart1();
+		var interrupted = handleBeforeHidePart1(lastNavigationDirection);
 		if (interrupted)
 			return;
 
 		var context = findContext(newUid);
-		handlePopstate(context, lastNavigationDirection, distance);
+		await handlePopstate(context, lastNavigationDirection, distance);
 	});
 
 	if(storageAvailable())
@@ -501,6 +515,106 @@ export function printStack() {
 		console.log(stack[i]);
 }
 
+function modifyHistory(statesToKeep)
+{
+	// BUG: You can't remove the 2nd stack frame. This is because you'd have to go back to -1, to then go forward to 0 (removing frame 1)
+	// For clarity, you can remove (replace) frame 0 (1st), and frame 2+ (3rd+)
+	// As a workaround, we replace the 2nd stack frame, if it is the tail, with the root "/". 
+	// This at least hopefully removes any meaning from it, simply taking you "home" rather than to wherever you were likely trying to remove.
+
+	if (statesToKeep.length == stack.length)
+		return Promise.resolve();
+
+	return new Promise(async (resolve, reject) => {
+
+		let backsToDo = stackPointer;
+		let currentUid = -1;
+
+		//  TODO: handle stack pointer not being at the tail when this process starts
+		
+		// see BUG comments at the top of this method
+		let apply2ndFrameHack = statesToKeep.length == 1 && stack.length > 1
+		let defaultPageRouteResult = null;
+		let defaultPage = null;
+		if(apply2ndFrameHack)
+		{
+			let url = getPath(options.defaultPageName);
+			defaultPageRouteResult = router.parse(url);
+			defaultPage = await loadPage(defaultPageRouteResult, {});
+		}
+
+		manuallyAdjustingHistory = async _ => {
+			// rewind to the first history position
+			if(backsToDo > 0)
+			{
+				window.setTimeout(() => {
+					// see BUG comments at the top of this method
+					if(apply2ndFrameHack && backsToDo == 1)
+					{
+						window.history.replaceState({ uid: stack[1].uid }, defaultPage.title, defaultPageRouteResult.path);
+						document.title = defaultPage.title;
+					}
+
+					backsToDo--;
+					history.back();
+				}, 1);
+				return;
+			}
+
+			// reset the stack
+			
+			stack = [];
+
+			for (var k = 0; k < statesToKeep.length; k++) {
+				let currentState = statesToKeep[k];
+				currentState.uid = ++currentUid;
+
+				if (k == 0)
+					window.history.replaceState({ uid: currentState.uid }, currentState.page.title, currentState.data.route.url);
+				else
+					window.history.pushState({ uid: currentState.uid }, currentState.page.title, currentState.data.route.url);
+				
+				emitUrlChanged(currentState.data.route.url)
+
+				// TODO: this doesnt seem to work when k=0
+				document.title = currentState.page.title;
+
+				stack.push(currentState);
+			}
+
+			// see BUG comments at the top of this method
+			if(apply2ndFrameHack)
+			{
+				stack.push({
+					uid: 1,
+					data: {
+						route: {
+							url: defaultPageRouteResult.path,
+							path: defaultPageRouteResult.path,
+							name: defaultPageRouteResult.name,
+							params: defaultPageRouteResult.params
+						}
+					},
+					page: defaultPage
+				})
+
+				stackPointer = 0;
+			}
+			else
+			{
+				stackPointer = stack.length - 1;
+			}
+			
+			manuallyAdjustingHistory = false;
+
+			resolve();
+		};
+
+		history.back();
+	});
+}
+
+
 export function removeHistory(predicate)
 {
 	let statesToKeep = [];
@@ -510,60 +624,7 @@ export function removeHistory(predicate)
 			statesToKeep.push(stack[i]);
 	}
 
-	// TODO: ensure we always have at least 1 state to keep - must/can this always be the current page?
-
-	if (statesToKeep.length == stack.length)
-		return Promise.resolve();
-
-
-	return new Promise((resolve, reject) => {
-
-
-		let backsToDo = stackPointer - 1;
-		let currentUid = -1;
-
-		//  TODO: handle stack pointer not being at the tail when this process starts
-
-		manuallyAdjustingHistory = _ => {
-			// rewind to the first history position
-			if(backsToDo > 0)
-			{
-				window.setTimeout(() => {
-					backsToDo--;
-					history.back();
-				}, 1);
-				return;
-			}
-
-			// reset the stack
-			stack = [];
-
-			for (var k = 0; k < statesToKeep.length; k++) {
-				let currentState = statesToKeep[k];
-				currentState.uid = ++currentUid;
-
-				if (k == 0)
-					window.history.replaceState({ uid: currentState.uid }, null, currentState.data.route.url);
-				else
-					window.history.pushState({ uid: currentState.uid }, null, currentState.data.route.url);
-				
-				window.dispatchEvent(new CustomEvent('page-manager.url-changed', { 
-					url: currentState.data.route.url
-				}))
-
-					// TODO: this doesnt seem to work when k=0
-				document.title = currentState.page.title;
-
-				stack.push(currentState);
-			}
-
-			stackPointer = stack.length - 1;
-
-			manuallyAdjustingHistory = false;
-		};
-
-		history.back();
-	});
+	return modifyHistory(statesToKeep);
 }
 
 export function purgeCache() {

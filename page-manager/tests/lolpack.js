@@ -12,6 +12,7 @@ import pageShowFail from './page-show-fail.js'
 window.addEventListener('DOMContentLoaded', async function () {
 	await pageManager.init({
 		error404PageName: 'page404',
+		defaultPageName: 'page1',
 		beforeHide: message => new Promise(resolve => {
 			resolve(confirm(message))
 		})

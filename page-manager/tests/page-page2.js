@@ -18,7 +18,7 @@ export default registerPage({
 
 			$page.querySelector('button').addEventListener('click', e => {
 				e.preventDefault();
-				replace('/page1')
+				replace('/page3')
 			})
 		}
 	}
