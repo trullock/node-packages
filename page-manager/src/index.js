@@ -220,9 +220,19 @@ async function doUpdate(page, data) {
 	document.title = page.title
 }
 
+function getNewUid()
+{
+	let uid = -1;
+
+	for(let i = 0; i < stack.length; i++)
+		uid = Math.max(uid, stack[i].uid)
+
+	return uid + 1;
+}
+
 async function handleHistoryAction(event, url, data, page) {
 	if (event.action == 'push') {
-		let newUid = stack[stackPointer].uid + 1;
+		let newUid = getNewUid()
 
 		window.history.pushState({ uid: newUid }, null, url);
 		emitUrlChanged(url);
@@ -235,19 +245,21 @@ async function handleHistoryAction(event, url, data, page) {
 	}
 	else if (event.action == 'replace') 
 	{
-		let currentUid = stack[stackPointer].uid;
-		window.history.replaceState({ uid: currentUid }, null, url);
-		emitUrlChanged(url);
-		stack[stackPointer] = { uid: currentUid, data, page };
-		
-		if(stack[stackPointer].data.route.url == stack[stackPointer - 1]?.data?.route?.url)
+		if(data.route.url == stack[stackPointer - 1]?.data?.route?.url)
 		{
 			let statesToKeep = [];
 			for (var i = 0; i < stackPointer - 1; i++)
 				statesToKeep.push(stack[i]);
-			statesToKeep.push(stack[stackPointer]);
+			statesToKeep.push({ uid: stack[stackPointer - 1].uid, data, page });
 
 			await modifyHistory(statesToKeep);
+		}
+		else
+		{
+			let newId = getNewUid();
+			window.history.replaceState({ uid: newId }, null, url);
+			stack[stackPointer] = { uid: newId, data, page };
+			emitUrlChanged(url);
 		}
 	}
 	else if(event.action == 'back')
@@ -413,6 +425,7 @@ export async function ready()
 
 	// listen for browser navigations
 	window.addEventListener("popstate", async e => {
+		// TODO: is 0 sensible here, or should we call getNewId()?
 		let newUid = e.state?.uid || 0;
 		let previousUid = stack[stackPointer].uid;
 		let lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
@@ -528,12 +541,12 @@ function modifyHistory(statesToKeep)
 	return new Promise(async (resolve, reject) => {
 
 		let backsToDo = stackPointer;
-		let currentUid = -1;
 
 		//  TODO: handle stack pointer not being at the tail when this process starts
 		
 		// see BUG comments at the top of this method
 		let apply2ndFrameHack = statesToKeep.length == 1 && stack.length > 1
+		let secondFrameHackUid = -1
 		let defaultPageRouteResult = null;
 		let defaultPage = null;
 		if(apply2ndFrameHack)
@@ -541,6 +554,8 @@ function modifyHistory(statesToKeep)
 			let url = getPath(options.defaultPageName);
 			defaultPageRouteResult = router.parse(url);
 			defaultPage = await loadPage(defaultPageRouteResult, {});
+
+			secondFrameHackUid = getNewUid();
 		}
 
 		manuallyAdjustingHistory = async _ => {
@@ -548,13 +563,6 @@ function modifyHistory(statesToKeep)
 			if(backsToDo > 0)
 			{
 				window.setTimeout(() => {
-					// see BUG comments at the top of this method
-					if(apply2ndFrameHack && backsToDo == 1)
-					{
-						window.history.replaceState({ uid: stack[1].uid }, defaultPage.title, defaultPageRouteResult.path);
-						document.title = defaultPage.title;
-					}
-
 					backsToDo--;
 					history.back();
 				}, 1);
@@ -567,26 +575,25 @@ function modifyHistory(statesToKeep)
 
 			for (var k = 0; k < statesToKeep.length; k++) {
 				let currentState = statesToKeep[k];
-				currentState.uid = ++currentUid;
 
 				if (k == 0)
 					window.history.replaceState({ uid: currentState.uid }, currentState.page.title, currentState.data.route.url);
 				else
 					window.history.pushState({ uid: currentState.uid }, currentState.page.title, currentState.data.route.url);
 				
-				emitUrlChanged(currentState.data.route.url)
-
 				// TODO: this doesnt seem to work when k=0
 				document.title = currentState.page.title;
 
 				stack.push(currentState);
+
+				emitUrlChanged(currentState.data.route.url)
 			}
 
 			// see BUG comments at the top of this method
 			if(apply2ndFrameHack)
 			{
 				stack.push({
-					uid: 1,
+					uid: secondFrameHackUid,
 					data: {
 						route: {
 							url: defaultPageRouteResult.path,
@@ -610,6 +617,14 @@ function modifyHistory(statesToKeep)
 			resolve();
 		};
 
+		// see BUG comments at the top of this method
+		if(apply2ndFrameHack && backsToDo == 1)
+		{
+			window.history.replaceState({ uid: secondFrameHackUid }, defaultPage.title, defaultPageRouteResult.path);
+			document.title = defaultPage.title;
+		}
+
+		backsToDo--;
 		history.back();
 	});
 }
