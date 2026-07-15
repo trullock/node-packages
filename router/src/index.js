@@ -109,29 +109,41 @@ Route.prototype = {
 	},
 
 	_getParamsObject: function (request) {
-		var shouldTypecast = this._router.shouldTypecast,
-			values = this._router.patternLexer.getParamValues(request, this._matchRegexp, shouldTypecast),
-			o = {},
-			n = values.length,
-			param, val;
-		while (n--) {
+		let shouldTypecast = this._router.shouldTypecast
+		let values = this._router.patternLexer.getParamValues(request, this._matchRegexp, shouldTypecast)
+		let o = {}
+		let n = values.length
+		let param
+		let val
+
+		while (n--)
+		{
+			if (!this._paramsIds)
+				continue;
+
+			param = this._paramsIds[n];
 			val = values[n];
-			if (this._paramsIds) {
-				param = this._paramsIds[n];
-				if (param.indexOf('?') === 0 && val) {
-					val = decodeQueryString(val, shouldTypecast);
-					
-					for(var key in val){
-						if(!o[key])
-							o[key] = val[key];
-						else
-							o['?' + key] = val[key];
-					}
-					o[n] = val;
-				} 
-				else 
-					o[param] = val;
+			
+			if (param.indexOf('?') === 0 && val)
+			{
+				val = decodeQueryString(val, shouldTypecast);
+				
+				for(var key in val){
+					if(!o[key])
+						o[key] = val[key];
+					else
+						o['?' + key] = val[key];
+				}
 			}
+			else if(param == '?query' && !val)
+			{
+				// noop
+			}
+			else 
+			{
+				o[param] = val;
+			}
+			
 		}
 
 		return o;
@@ -154,7 +166,7 @@ Route.prototype = {
 };
 
 
-export default new class
+export default class
 {
 	constructor()
 	{
@@ -232,4 +244,4 @@ export default new class
 	{
 		return '[Router numRoutes:' + this.getNumRoutes() + ']';
 	}
-}();
+};

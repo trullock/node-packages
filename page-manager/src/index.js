@@ -1,17 +1,19 @@
-import router from '@trullock/router';
+import Router from '@trullock/router';
 
-var pageCache = {},
+let pageCache = {},
 	pageTemplateCache = {},
 	stack = [],
 	stackPointer = -1;
 
-var manuallyAdjustingHistory = false;
-var handlingBeforeHide = false;
-var beforeHideNavDirection = null;
+let manuallyAdjustingHistory = false;
+let handlingBeforeHide = false;
+let beforeHideNavDirection = null;
 
-var goal = null;
-var backData = {};
-var options = {
+let router = new Router();
+
+let goal = null;
+let backData = {};
+let options = {
 	pageInterrupt: routeResult => null,
 	attachMarkup: $html => document.body.appendChild($html),
 	prepareMarkup: $html => { },
