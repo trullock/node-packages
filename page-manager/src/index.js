@@ -137,6 +137,8 @@ async function showPage(url, data, event)
 		name: routeResult.name,
 		params: routeResult.params
 	};
+	if(!data.event)
+		data.originalEvent = event;
 	data.event = event;
 
 	let interrupt = await Promise.resolve(options.pageInterrupt(routeResult));
@@ -170,10 +172,18 @@ async function showPage(url, data, event)
 			stackPointer = 0;
 		}
 		// page refresh
-		else
-			{
+		else if(stack[stackPointer].data.route.url == data.route.url)
+		{
 			stack[stackPointer].page = page;
 			stack[stackPointer].data = data;
+		}
+		// page replacement via address bar
+		else
+		{
+			stack.splice(stackPointer + 1, stack.length - stackPointer);
+			let newUid = getNewUid()
+			stack.push({ uid: newUid, data, page });
+			stackPointer++;
 		}
 
 		// set initial page
@@ -184,7 +194,7 @@ async function showPage(url, data, event)
 
 	let currentState = stack[stackPointer];
 
-	debugger
+	// TODO: what does this logic really mean?
 	if (currentState.data.route.path == routeResult.path) {
 		handleHistoryAction(event, url, data, currentState.page);
 		const page = await getPage;
@@ -310,28 +320,83 @@ function storageAvailable() {
     }
 }
 
-export async function init(opts) {
+function loadStack(fromFwdBack)
+{
+	if(!storageAvailable())
+		return;
+	
+	let oldStack = stack;
 
-	Object.assign(options, opts);
-
-	if(storageAvailable())
+	let storedStack = window.sessionStorage.getItem("stack");
+	if(storedStack)
 	{
-		let storedStack = window.sessionStorage.getItem("stack");
-		if(storedStack)
+		storedStack = JSON.parse(storedStack);
+		stack = storedStack.stack;
+		stackPointer = storedStack.stackPointer;
+		// we can get out of sync with the history state if we have gone back/fwd over a hard page load
+		if(window.history.state)
 		{
-			storedStack = JSON.parse(storedStack);
-			stack = storedStack.stack;
-			stackPointer = storedStack.stackPointer;
-			window.sessionStorage.removeItem("stack");
+			// if we've gone back over a page load, the stackpointer can be out of sync 
+			if(window.history.state.uid != stack[stackPointer].uid)
+			{
+				stackPointer = stack.findIndex(s => s.uid == window.history.state.uid);
+			}
+			else
+			{
+				// we are in sync
+			}
+		}
+		else
+		{
+			// no window.history.state means we are on a fresh page load (via direct load or a fwd)
+			if(fromFwdBack)
+			{
+				// if we think we are on 0, then we navigated back before page 0, and have forwarded back to page 0, so we are in sync. Else..
+				if(stackPointer > 0)
+					stackPointer++;
+			}
+		}
+
+		window.sessionStorage.removeItem("stack");
+	}
+
+	// retain page objects when we've refresh the stack across a hard load/bfcache
+	if(oldStack)
+	{
+		for (var i = 0; i < stack.length; i++)
+		{
+			let oldPage = oldStack.find(s => s.uid == stack[i].uid)?.page;
+			if(oldPage)
+				stack[i].page = oldPage;
 		}
 	}
+}
+
+export async function init(opts) {
+	Object.assign(options, opts);
+
+	loadStack(false);
 
 	await initLoading();
 	await showLoading();
 }
 
+window.addEventListener('pageshow', function(event) {
+		// TODO: remove me
+	console.log('pageshow', event.persisted);
+
+	if(event.persisted)
+	{
+		loadStack(true);
+		// TODO: remove me
+		printStack();
+	}
+});
+
+
 export async function ready()
 {
+	// TODO: why isnt this awaited?
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
 		console.error(e);
 		
@@ -352,6 +417,7 @@ export async function ready()
 			return;
 		}
 
+		// TODO: whats going on here?
 		if (direction == 'back')
 			Object.assign(context.data, backData);
 		backData = {};
@@ -436,12 +502,33 @@ export async function ready()
 
 	// listen for browser navigations
 	window.addEventListener("popstate", async e => {
-		// TODO: is 0 sensible here, or should we call getNewId()?
-		let newUid = e.state?.uid || 0;
+		let newUid = -1;
+		let context = null;
+
+		if(!e.state)
+		{
+			// We must have backed to the first page, but this could be the true first page or a hard load/refresh mid-stack.
+			// rewind to find the last LOAD
+			for(let i = stackPointer; i >= 0; i--)
+			{
+				if(stack[i].data.originalEvent.action == 'load')
+				{
+					newUid = stack[i].uid;
+					context = stack[i];
+					break;
+				}
+			}
+		}
+		else
+		{
+			newUid = e.state.uid
+			context = findContext(newUid);
+		}
+
 		let previousUid = stack[stackPointer].uid;
 		let lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
 		let distance = Math.abs(newUid - previousUid);
-
+		
 		var interrupted = handleBeforeHidePart2();
 		if (interrupted)
 			return;
@@ -450,10 +537,10 @@ export async function ready()
 		if (interrupted)
 			return;
 
-		var context = findContext(newUid);
 		await handlePopstate(context, lastNavigationDirection, distance);
 	});
 
+	
 	if(storageAvailable())
 	{
 		window.addEventListener("beforeunload", () => {
@@ -533,10 +620,9 @@ export function back(data, checkBeforeHide) {
 }
 
 export function printStack() {
-	console.log("Stack length: " + stack.length);
 	console.log("Stack pointer: " + stackPointer);
 	for(var i = 0; i < stack.length; i++)
-		console.log((i == stackPointer ? "-> " : "   ") + "UID: " + stack[i].uid + " URL: " + stack[i].data.route.url + " action: " + stack[i].data.event.action);
+		console.log((i == stackPointer ? "-> " : "   ") + "UID: " + stack[i].uid + " URL: " + stack[i].data.route.url + " action: " + stack[i].data.event.action + " originalAction: " + stack[i].data.originalEvent.action);
 }
 
 function modifyHistory(statesToKeep)

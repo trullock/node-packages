@@ -15,8 +15,9 @@ export default registerPage({
 			super($page);
 		}
 
-		show(data) {
+		update(data) {
 			this.$page.querySelector('.js-query').textContent = window.location.search
+			return super.update(data);
 		}
 	}
 });

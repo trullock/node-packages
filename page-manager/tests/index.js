@@ -11,6 +11,7 @@ import pageShowFail from './page-show-fail.js'
 import pageQuery from './page-pageQuery.js'
 
 window.addEventListener('DOMContentLoaded', async function () {
+
 	await pageManager.init({
 		error404PageName: 'page404',
 		defaultPageName: 'page1',
@@ -38,8 +39,6 @@ window.addEventListener('DOMContentLoaded', async function () {
 	
 	window.addEventListener("page-manager.url-changed", e => {
 		console.log("----------------------------------");
-		console.log(e.detail.url);
-
 		pageManager.printStack();
 	});
 

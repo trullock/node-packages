@@ -1,6 +1,6 @@
 {
   "name": "@trullock/page-manager",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Single page app manager",
   "exports": {
     ".": "./src/index.js"
