@@ -395,15 +395,8 @@ export async function init(opts) {
 }
 
 window.addEventListener('pageshow', function(event) {
-		// TODO: remove me
-	console.log('pageshow', event.persisted);
-
 	if(event.persisted)
-	{
 		loadStack(true);
-		// TODO: remove me
-		printStack();
-	}
 });
 
 
