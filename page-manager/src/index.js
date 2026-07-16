@@ -189,6 +189,19 @@ async function showPage(url, data, event)
 		// set initial page
 		emitUrlChanged(window.location.pathname + window.location.search + window.location.hash);
 
+		// handle beforehide for initial page loads
+		window.addEventListener("beforeunload", async e => {
+			if(stack[stackPointer].page.beforeHide && options.beforeHide)
+			{
+				var interrupt = stack[stackPointer].page.beforeHide();
+				if (interrupt) {
+					var result = await Promise.resolve(options.beforeHide(interrupt));
+					if(!result)
+						e.preventDefault();
+				}
+			}
+		})
+
 		return page;
 	}
 
@@ -503,8 +516,9 @@ export async function ready()
 	// listen for browser navigations
 	window.addEventListener("popstate", async e => {
 		let newUid = -1;
+		let newPointer = -1;
 		let context = null;
-
+		
 		if(!e.state)
 		{
 			// We must have backed to the first page, but this could be the true first page or a hard load/refresh mid-stack.
@@ -514,6 +528,7 @@ export async function ready()
 				if(stack[i].data.originalEvent.action == 'load')
 				{
 					newUid = stack[i].uid;
+					newPointer = i;
 					context = stack[i];
 					break;
 				}
@@ -522,12 +537,20 @@ export async function ready()
 		else
 		{
 			newUid = e.state.uid
-			context = findContext(newUid);
+			for (var i = 0; i < stack.length; i++)
+			{
+				if (stack[i].uid == newUid)
+				{
+					context = stack[i];
+					newPointer = i;
+					break;
+				}
+			}
 		}
 
 		let previousUid = stack[stackPointer].uid;
 		let lastNavigationDirection = newUid > previousUid ? 'fwd' : 'back';
-		let distance = Math.abs(newUid - previousUid);
+		let distance = Math.abs(newPointer - stackPointer);
 		
 		var interrupted = handleBeforeHidePart2();
 		if (interrupted)
@@ -556,14 +579,6 @@ export async function ready()
 			window.sessionStorage.setItem('stack', JSON.stringify(stackToStore));
 		});
 	}
-}
-
-function findContext(uid){
-	for (var i = 0; i < stack.length; i++) {
-		if (stack[i].uid == uid)
-			return stack[i];
-	}
-	return null;
 }
 
 function expandOnlyHash(url)
