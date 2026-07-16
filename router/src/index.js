@@ -86,24 +86,22 @@ Route.prototype = {
 	},
 
 	_isValidArrayRule: function (arr, val) {
-		if (!this._router.ignoreCase) {
+		if (!this._router.ignoreCase)
 			return arrayIndexOf(arr, val) !== -1;
-		}
 
-		if (typeof val === 'string') {
+		if (typeof val === 'string')
 			val = val.toLowerCase();
-		}
 
 		var n = arr.length,
 			item,
 			compareVal;
 
-		while (n--) {
+		while (n--)
+			{
 			item = arr[n];
 			compareVal = (typeof item === 'string') ? item.toLowerCase() : item;
-			if (compareVal === val) {
+			if (compareVal === val)
 				return true;
-			}
 		}
 		return false;
 	},
@@ -150,11 +148,13 @@ Route.prototype = {
 	},
 
 	interpolate: function (replacements) {
-		try {
+		try
+		{
 			var str = this._router.patternLexer.interpolate(this._pattern, replacements);
 			return str;
 		}
-		catch(e) {
+		catch(e)
+		{
 			throw new Error(`Error interpolating route ${this._pattern} with values ${JSON.stringify(replacements)}\n` + e);
 		}
 	},
@@ -205,7 +205,7 @@ export default class
 	parse (request)
 	{
 		var n = this.routes.length;
-		var route, hash, path;
+		var route, hash, path, pathAndQuery;
 
 		var index = request.indexOf('#');
 		if(index > -1)
@@ -213,6 +213,8 @@ export default class
 			hash = request.substr(index + 1);
 			request = request.substr(0, index);
 		}
+
+		pathAndQuery = request;
 
 		index = request.indexOf('?');
 		if(index > -1)
@@ -229,6 +231,7 @@ export default class
 
 				return {
 					path: path.toLowerCase(),
+					
 					name: route._name,
 					pattern: route._pattern,
 					data: route._data,

@@ -8,6 +8,7 @@ import page4 from './page-page4.js'
 import pageX from './page-pageX.js'
 import page404 from './page-page404.js'
 import pageShowFail from './page-show-fail.js'
+import pageQuery from './page-pageQuery.js'
 
 window.addEventListener('DOMContentLoaded', async function () {
 	await pageManager.init({
@@ -34,13 +35,12 @@ window.addEventListener('DOMContentLoaded', async function () {
 		e.preventDefault();
 	}, false);
 
-	document.querySelector('.btnStack').addEventListener('click', e => {
-		pageManager.printStack();
-	})
-
 	
 	window.addEventListener("page-manager.url-changed", e => {
+		console.log("----------------------------------");
 		console.log(e.detail.url);
+
+		pageManager.printStack();
 	});
 
 	await pageManager.ready()

@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default async () => {
 
 	return {
-		entry: './tests/lolpack.js',
+		entry: './tests/index.js',
 		output: {
 			publicPath: '/',
 			path: path.resolve(__dirname, 'tests', 'dist')

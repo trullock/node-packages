@@ -164,21 +164,27 @@ async function showPage(url, data, event)
 		await hideLoading();
 
 		// clean initial load
-		if (stackPointer == -1) {
+		if (stackPointer == -1)
+		{
 			stack.push({ uid: 0, data, page });
 			stackPointer = 0;
 		}
-
 		// page refresh
-		else {
+		else
+			{
 			stack[stackPointer].page = page;
 			stack[stackPointer].data = data;
 		}
+
+		// set initial page
+		emitUrlChanged(window.location.pathname + window.location.search + window.location.hash);
+
 		return page;
 	}
 
 	let currentState = stack[stackPointer];
 
+	debugger
 	if (currentState.data.route.path == routeResult.path) {
 		handleHistoryAction(event, url, data, currentState.page);
 		const page = await getPage;
@@ -193,8 +199,11 @@ async function showPage(url, data, event)
 		currentState.page.hide(event),
 		getPage
 	]);
+
 	const page = results[1];
+
 	handleHistoryAction(event, url, data, page);
+
 	await doShow(page, data);
 			// .catch(e => {
 			// 	// TODO: what case is this?
@@ -237,13 +246,14 @@ async function handleHistoryAction(event, url, data, page) {
 		let newUid = getNewUid()
 
 		window.history.pushState({ uid: newUid }, null, url);
-		emitUrlChanged(url);
-
+		
 		// remove future
 		stack.splice(stackPointer + 1, stack.length - stackPointer);
 
 		stack.push({ uid: newUid, data, page });
 		stackPointer++;
+
+		emitUrlChanged(url);
 	}
 	else if (event.action == 'replace') 
 	{
@@ -261,16 +271,19 @@ async function handleHistoryAction(event, url, data, page) {
 			let newId = getNewUid();
 			window.history.replaceState({ uid: newId }, null, url);
 			stack[stackPointer] = { uid: newId, data, page };
+
 			emitUrlChanged(url);
 		}
 	}
 	else if(event.action == 'back')
 	{
 		stackPointer -= event.distance;
+		emitUrlChanged(url);
 	}
 	else if (event.action == 'fwd')
 	{
 		stackPointer += event.distance;
+		emitUrlChanged(url);
 	}	
 }
 
@@ -319,8 +332,6 @@ export async function init(opts) {
 
 export async function ready()
 {
-	// set initial page
-	emitUrlChanged(window.location.pathname + window.location.search + window.location.hash);
 	showPage(window.location.pathname + window.location.search + window.location.hash, null, { action: 'load', distance: 0 }).catch(e => {
 		console.error(e);
 		
@@ -344,8 +355,6 @@ export async function ready()
 		if (direction == 'back')
 			Object.assign(context.data, backData);
 		backData = {};
-
-		emitUrlChanged(context.data.route.url);
 
 		showPage(context.data.route.url, context.data, { action: direction, distance }).catch(e => {
 			console.error(e);
@@ -527,7 +536,7 @@ export function printStack() {
 	console.log("Stack length: " + stack.length);
 	console.log("Stack pointer: " + stackPointer);
 	for(var i = 0; i < stack.length; i++)
-		console.log(stack[i]);
+		console.log((i == stackPointer ? "-> " : "   ") + "UID: " + stack[i].uid + " URL: " + stack[i].data.route.url + " action: " + stack[i].data.event.action);
 }
 
 function modifyHistory(statesToKeep)
