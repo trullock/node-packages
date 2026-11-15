@@ -27,3 +27,11 @@ test("should parse query string and hash properly", (t) => {
 	const result = router.parse("/test/123?foo=bar&baz=qux#section1");
 	assert.deepEqual(result.params, { id: "123", foo: "bar", baz: "qux", hash: "section1" });
 });
+
+test("should match the correct route when multiple routes are added with equal priority", (t) => {
+	const router = new Router();
+	router.addRoute("test2", "/test/{id}/test/{id2}", {}, 0);
+	router.addRoute("test1", "/test/{id}", {}, 0);
+	const result = router.parse("/test/123");
+	assert.equal(result.name, "test1");
+});

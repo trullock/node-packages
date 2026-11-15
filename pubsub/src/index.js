@@ -91,7 +91,7 @@ export function subscribe(type, func, name) {
 
 	for (var i = 0; i < handlers[type].length; i++)
 		if (handlers[type][i].func === func)
-			throw "Handler already subscribed to this message";
+			throw `Handler already subscribed to this message type: ${type}`;
 
 	handlers[type].push({
 		func,

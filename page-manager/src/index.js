@@ -148,7 +148,6 @@ async function showPage(url, data, event)
 		return showPage(interrupt.url, null, event);
 	}
 	
-	await showLoading();
 
 	var getPage = null
 	if (pageCache[routeResult.path])
@@ -161,6 +160,8 @@ async function showPage(url, data, event)
 	// handle initial page
 	if (event.action == 'load')
 	{
+		await showLoading();
+		
 		const page = await getPage;
 		await doShow(page, data);
 		await hideLoading();
@@ -191,7 +192,7 @@ async function showPage(url, data, event)
 
 		// handle beforehide for initial page loads
 		window.addEventListener("beforeunload", async e => {
-			if(stack[stackPointer].page.beforeHide && options.beforeHide)
+			if(stack[stackPointer]?.page.beforeHide && options.beforeHide)
 			{
 				var interrupt = stack[stackPointer].page.beforeHide();
 				if (interrupt) {
@@ -207,16 +208,17 @@ async function showPage(url, data, event)
 
 	let currentState = stack[stackPointer];
 
-	// TODO: what does this logic really mean?
+	// if we're staying on the same page, usually caused by a hash change
 	if (currentState.data.route.path == routeResult.path) {
 		handleHistoryAction(event, url, data, currentState.page);
 		const page = await getPage;
 		await doUpdate(page, data);
-		await hideLoading();
 		return page;
 	}
 
 	currentState.data.scrollY = window.scrollY;
+
+	await showLoading();
 
 	const results = await Promise.all([
 		currentState.page.hide(event),
