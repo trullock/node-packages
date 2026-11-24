@@ -58,7 +58,6 @@ function Route(name, pattern, data, priority, router) {
 	this._router = router;
 	this._pattern = pattern;
 	this._paramsIds = isRegexPattern ? null : router.patternLexer.getParamIds(pattern);
-	this._optionalParamsIds = isRegexPattern ? null : router.patternLexer.getOptionalParamsIds(pattern);
 	this._matchRegexp = isRegexPattern ? pattern : router.patternLexer.compilePattern(pattern, router.ignoreCase);
 	this._data = data;
 	this._priority = priority || 0;
@@ -68,55 +67,6 @@ Route.prototype = {
 
 	match: function (request) {
 		return this._matchRegexp.test(request);
-	},
-
-	_isValidParam: function (request, prop, values) {
-		var validationRule = this.rules[prop],
-			val = values[prop],
-			isValid = false,
-			isQuery = (prop.indexOf('?') === 0);
-
-		if (val == null && this._optionalParamsIds && arrayIndexOf(this._optionalParamsIds, prop) !== -1) {
-			isValid = true;
-		}
-		else if (isRegExp(validationRule)) {
-			if (isQuery)
-				val = values[prop + '_']; //use raw string
-
-			isValid = validationRule.test(val);
-		}
-		else if (isArray(validationRule)) {
-			if (isQuery)
-				val = values[prop + '_']; //use raw string
-
-			isValid = this._isValidArrayRule(validationRule, val);
-		}
-		else if (isFunction(validationRule)) {
-			isValid = validationRule(val, request, values);
-		}
-
-		return isValid; //fail silently if validationRule is from an unsupported type
-	},
-
-	_isValidArrayRule: function (arr, val) {
-		if (!this._router.ignoreCase)
-			return arrayIndexOf(arr, val) !== -1;
-
-		if (typeof val === 'string')
-			val = val.toLowerCase();
-
-		var n = arr.length,
-			item,
-			compareVal;
-
-		while (n--)
-			{
-			item = arr[n];
-			compareVal = (typeof item === 'string') ? item.toLowerCase() : item;
-			if (compareVal === val)
-				return true;
-		}
-		return false;
 	},
 
 	_getParamsObject: function (request) {
@@ -137,7 +87,7 @@ Route.prototype = {
 			
 			if (param.indexOf('?') === 0 && val)
 			{
-				val = decodeQueryString(val, shouldTypecast);
+				val = decodeQueryString(val);
 				
 				for(var key in val){
 					if(!Object.hasOwn(o, key))
@@ -170,10 +120,6 @@ Route.prototype = {
 		{
 			throw new Error(`Error interpolating route ${this._pattern} with values ${JSON.stringify(replacements)}\n` + e);
 		}
-	},
-
-	toString: function () {
-		return '[Route pattern:"' + this._pattern + '", numListeners:' + this.matched.getNumListeners() + ']';
 	}
 
 };
@@ -218,7 +164,7 @@ export default class
 	parse (request)
 	{
 		var n = this.routes.length;
-		var route, hash, path, pathAndQuery;
+		var route, hash, path;
 
 		var index = request.indexOf('#');
 		if(index > -1)
@@ -226,8 +172,6 @@ export default class
 			hash = request.substr(index + 1);
 			request = request.substr(0, index);
 		}
-
-		pathAndQuery = request;
 
 		index = request.indexOf('?');
 		if(index > -1)
@@ -254,10 +198,5 @@ export default class
 		}
 
 		return null;
-	}
-
-	toString ()
-	{
-		return '[Router numRoutes:' + this.getNumRoutes() + ']';
 	}
 };

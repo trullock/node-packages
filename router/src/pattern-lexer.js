@@ -6,7 +6,6 @@ export default function () {
 
 		//trailing slashes (begin/end of string)
 		LOOSE_SLASHES_REGEXP = /^\/|\/$/g,
-		LEGACY_SLASHES_REGEXP = /\/$/g,
 
 		//params - everything between `{ }` or `: :`
 		PARAMS_REGEXP = /(?:\{|:)([^}:]+)(?:\}|:)/g,
@@ -61,13 +60,7 @@ export default function () {
 				rgx: /:([^:]+):/g,
 				res: '([^\\/?]+)?\/?'
 			}
-		},
-
-		LOOSE_SLASH = 1,
-		STRICT_SLASH = 2,
-		LEGACY_SLASH = 3,
-
-		_slashMode = LOOSE_SLASH;
+		};
 
 
 	function precompileTokens() {
@@ -85,7 +78,15 @@ export default function () {
 
 
 	var OPTIONAL_PARAM_SEGMENT_REGEXP = new RegExp(TOKENS.OS.id + TOKENS.OP.id, 'g'),
-		OPTIONAL_REST_SEGMENT_REGEXP = new RegExp(TOKENS.OS.id + TOKENS.OR.id, 'g');
+		OPTIONAL_REST_SEGMENT_REGEXP = new RegExp(TOKENS.OS.id + TOKENS.OR.id, 'g'),
+
+		//placeholder for optional params with no value during interpolation
+		OMITTED = '__CR_OMITTED__',
+		//placeholder marking where a query string starts during interpolation
+		QUERY = '__CR_QUERY__',
+		QUERY_REGEXP = new RegExp('(?:' + TOKENS.OS.id + ')*' + QUERY, 'g'),
+		OMITTED_REGEXP = new RegExp(OMITTED, 'g'),
+		OMITTED_SEGMENT_REGEXP = new RegExp('(?:\\/|' + TOKENS.OS.id + ')' + OMITTED + '(?=\\/|' + TOKENS.OS.id + ')', 'g');
 
 	function captureVals(regex, pattern) {
 		var vals = [], match;
@@ -103,20 +104,11 @@ export default function () {
 		return captureVals(PARAMS_REGEXP, pattern);
 	}
 
-	function getOptionalParamsIds(pattern) {
-		return captureVals(TOKENS.OP.rgx, pattern);
-	}
-
 	function compilePattern(pattern, ignoreCase) {
 		pattern = pattern || '';
 
 		if (pattern) {
-			if (_slashMode === LOOSE_SLASH) {
-				pattern = pattern.replace(LOOSE_SLASHES_REGEXP, '');
-			}
-			else if (_slashMode === LEGACY_SLASH) {
-				pattern = pattern.replace(LEGACY_SLASHES_REGEXP, '');
-			}
+			pattern = pattern.replace(LOOSE_SLASHES_REGEXP, '');
 
 			//save tokens
 			pattern = replaceTokens(pattern, 'rgx', 'save');
@@ -130,15 +122,12 @@ export default function () {
 			//restore tokens
 			pattern = replaceTokens(pattern, 'rRestore', 'res');
 
-			if (_slashMode === LOOSE_SLASH) {
-				pattern = '\\/?' + pattern;
-			}
+			pattern = '\\/?' + pattern;
 		}
 
-		if (_slashMode !== STRICT_SLASH) {
-			//single slash is treated as empty and end slash is optional
-			pattern += '\\/?';
-		}
+		//single slash is treated as empty and end slash is optional
+		pattern += '\\/?';
+
 		return new RegExp('^' + pattern + '$', ignoreCase ? 'i' : '');
 	}
 
@@ -174,7 +163,8 @@ export default function () {
 		
 		var replaceFn = function (match, prop) {
 			var val;
-			prop = (prop.substr(0, 1) === '?') ? prop.substr(1) : prop;
+			var isQuery = prop.substr(0, 1) === '?';
+			prop = isQuery ? prop.substr(1) : prop;
 			if (replacements[prop] != null) {
 				if (typeof replacements[prop] === 'object') {
 					var queryParts = [], rep;
@@ -199,16 +189,25 @@ export default function () {
 					val = String(replacements[prop]);
 				}
 
-				if (match.indexOf('*') === -1 && val.indexOf('/') !== -1) {
+				if (isQuery) {
+					val = val.replace(/^\?/, '');
+					if (!val && match.indexOf('{') !== -1)
+						throw new Error('The segment ' + match + ' is required.');
+					if (val)
+						val = QUERY + '?' + val;
+				}
+				else if (match.indexOf('*') === -1 && val.indexOf('/') !== -1) {
 					throw new Error('Invalid value "' + val + '" for segment "' + match + '".');
 				}
 			}
 			else if (match.indexOf('{') !== -1) {
 				throw new Error('The segment ' + match + ' is required.');
 			}
-			else {
-				val = '';
-			}
+
+			// an empty optional param is the same as an omitted one
+			if (!val && match.indexOf('{') === -1)
+				val = OMITTED;
+
 			return val;
 		};
 
@@ -216,26 +215,25 @@ export default function () {
 			TOKENS.OS.trail = new RegExp('(?:' + TOKENS.OS.id + ')+$');
 		}
 
-		return pattern
+		var result = pattern
 			.replace(TOKENS.OS.rgx, TOKENS.OS.save)
 			.replace(PARAMS_REGEXP, replaceFn)
+			.replace(OMITTED_SEGMENT_REGEXP, '') // remove omitted segments, along with their preceding slash
+			.replace(OMITTED_REGEXP, '')
+			.replace(QUERY_REGEXP, '') // remove query placeholder, along with any optional slash before it
 			.replace(TOKENS.OS.trail, '') // remove trailing
 			.replace(TOKENS.OS.rRestore, '/'); // add slash between segments
+
+		// every segment was omitted
+		if ((!result || result.indexOf('?') === 0) && pattern.indexOf('/') === 0)
+			return '/' + result;
+
+		return result;
 	}
 
 	//API
 	return {
-		strict: function () {
-			_slashMode = STRICT_SLASH;
-		},
-		loose: function () {
-			_slashMode = LOOSE_SLASH;
-		},
-		legacy: function () {
-			_slashMode = LEGACY_SLASH;
-		},
 		getParamIds: getParamIds,
-		getOptionalParamsIds: getOptionalParamsIds,
 		getParamValues: getParamValues,
 		compilePattern: compilePattern,
 		interpolate: interpolate

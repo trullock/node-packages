@@ -1,7 +1,7 @@
 # Router: known failures
 
 Run `npm test`. Every failing test is tagged `[BUG-n]` or `[DECISION-n]`, matching the entries below.
-BUG-1 (`isArray`, query object interpolation), BUG-2 (malformed encoding) and BUG-5 (optional segment separators) are fixed. The rest await review.
+BUG-1 (`isArray`, query object interpolation), BUG-2 (malformed encoding), BUG-5 (optional segment separators), BUG-8 (omitted segments), BUG-9 (query formatting) and BUG-12 (broken `toString`, removed) are fixed. The rest await review.
 
 - **BUG**: throws unexpectedly, loses data, or a feature present in the code does not work.
 - **DECISION**: the test states a proposed behaviour, but the current one may be intended. If so, change the test.
@@ -14,14 +14,8 @@ BUG-1 (`isArray`, query object interpolation), BUG-2 (malformed encoding) and BU
 | 4 | Rest params are named `r*`, swallow the query, and cannot be interpolated | `getParamIds` keeps the `*`; rest tokens compile to `.+` / `.*`, which cross `?`; interpolation looks up `r*` | Medium |
 | 6 | RegExp patterns throw when registered, despite `isRegExp` handling | `addRoute` calls `pattern.endsWith`; interpolation of a RegExp would need defining too | Low |
 | 7 | `shouldTypecast` throws | `typecastArrayValues` does not exist | Low |
-| 8 | `/a/:id:/b` without `id` interpolates to `/a//b` | Separators around an omitted segment are both kept | Medium |
-| 9 | Query interpolation adds a slash (`/a/?x=1`), and `{}` gives `/a/?` | `addRoute` appends `/:?query:`, and an empty object still emits `?` | Low |
 | 10 | A duplicate name throws, but the second route stays registered and takes over `interpolate` | State changes before `defineProperty` throws | Low |
 | 11 | Route names such as `parse` or `routes` break the router | Each name is defined as a property on the instance | Low |
-| 12 | `toString` throws on routers and routes | They call methods or members that do not exist | Low |
-
-Untested, dead code: `_isValidParam` and `_isValidArrayRule` are never called and use undefined
-`arrayIndexOf`, `isArray` and `isFunction`.
 
 ## Decisions
 
@@ -34,7 +28,7 @@ Untested, dead code: `_isValidParam` and `_isValidArrayRule` are never called an
 | 5 | `?hash=q` is kept when there is no fragment | Always overwritten | Alternatively, reserve the name |
 | 6 | `interpolate` encodes values | Inserted raw, so `?` and `#` change the URL | Decide with 3. Breaking for callers who pre-encode |
 | 7 | An empty required param throws | `/a/{id}` gives `/a/`, which does not match its own route | |
-| 8 | `/a/` interpolates to `/a/` | Gives `/a` | Harmless in loose mode, which matches both |
+| 8 | `/a/` interpolates to `/a/` | Gives `/a` | Harmless, as matching accepts both |
 
 ## Behaviour worth knowing (passing)
 

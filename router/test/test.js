@@ -392,9 +392,32 @@ test("interpolate: does not mutate its values", () => {
 	assert.equal(interpolate("/a/{id}", values), "/a/1");
 });
 
-test("[BUG-8] interpolate: an omitted middle segment leaves no double slash", () => {
-	assert.equal(interpolate("/a/:id:/b", {}), "/a/b");
-});
+for (const [pattern, values, expected] of [
+	["/a/:id:/b", {}, "/a/b"],
+	["/a/:id:/b", { id: "" }, "/a/b"],
+	["/a/:id:/b", { id: null }, "/a/b"],
+	["/a/:id:/b", { id: 0 }, "/a/0/b"],
+	["/a/:id:/b", { id: false }, "/a/false/b"],
+	["/a/:x:/:y:", {}, "/a"],
+	["/a/:x:/:y:", { x: 1 }, "/a/1"],
+	["/a/:x:/:y:", { y: 2 }, "/a/2"],
+	["/a/:x:/:y:", { x: 1, y: 2 }, "/a/1/2"],
+	["/a/:x:/:y:/b", {}, "/a/b"],
+	["/a/:x:/:y:/b", { x: 1 }, "/a/1/b"],
+	["/a/:x:/:y:/b", { y: 2 }, "/a/2/b"],
+	["/a/:x:/{y}", { y: 2 }, "/a/2"],
+	["/a/{x}/:y:/b", { x: 1 }, "/a/1/b"],
+	["/:x:", {}, "/"],
+	["/:x:/:y:", {}, "/"],
+	["/:x:/b", {}, "/b"],
+	["/:x:/b", { x: 1 }, "/1/b"],
+	["/:x:/{y}", { y: 2 }, "/2"],
+	["/a/:r*:", {}, "/a"],
+]) {
+	test(`interpolate: optional segments: "${pattern}" with ${JSON.stringify(values)}`, () => {
+		assert.equal(interpolate(pattern, values), expected);
+	});
+}
 
 test("[BUG-4] interpolate: rest params accept slashes", () => {
 	assert.equal(interpolate("/a/{r*}", { r: "x/y" }), "/a/x/y");
@@ -413,12 +436,40 @@ test("interpolate: a query array repeats its key", () => {
 	assert.match(interpolate("/a", { query: { x: [1, 2] } }), /\?x=1&x=2$/);
 });
 
-test("[BUG-9] interpolate: an empty query object adds nothing", () => {
-	assert.equal(interpolate("/a", { query: {} }), "/a");
+for (const [pattern, values, expected] of [
+	["/a", { query: {} }, "/a"],
+	["/a", { query: "" }, "/a"],
+	["/a", { query: "?" }, "/a"],
+	["/a", { query: { x: [] } }, "/a"],
+	["/a", { query: null }, "/a"],
+	["/a", { query: "?x=1" }, "/a?x=1"],
+	["/a", { query: "x=1" }, "/a?x=1"],
+	["/a", { query: "?x=/b" }, "/a?x=/b"],
+	["/a", { query: { x: 1, y: 2 } }, "/a?x=1&y=2"],
+	["/a", { query: { x: "a/b?c&d=e" } }, "/a?x=a%2Fb%3Fc%26d%3De"],
+	["/a", { query: { "x[]": [1, 2] } }, "/a?x[]=1&x[]=2"],
+	["/a/", { query: { x: 1 } }, "/a?x=1"],
+	["/", { query: { x: 1 } }, "/?x=1"],
+	["/", { query: {} }, "/"],
+	["/a/{id}", { id: 1, query: { x: 1 } }, "/a/1?x=1"],
+	["/a/:id:", { query: { x: 1 } }, "/a?x=1"],
+	["/a/:id:", { id: 1, query: { x: 1 } }, "/a/1?x=1"],
+	["/:id:", { query: { x: 1 } }, "/?x=1"],
+	["/:x:/:y:", { query: { x: 1 } }, "/?x=1"],
+	["/a/{id}{?q}", { id: 1, q: { x: 1 } }, "/a/1?x=1"],
+]) {
+	test(`interpolate: query: "${pattern}" with ${JSON.stringify(values)}`, () => {
+		assert.equal(interpolate(pattern, values), expected);
+	});
+}
+
+test("interpolate: query: an empty required query throws", () => {
+	assert.throws(() => interpolate("/a/{?q}", { q: {} }), /segment \{\?q\} is required/);
 });
 
-test("[BUG-9] interpolate: a query string is not preceded by a slash", () => {
-	assert.equal(interpolate("/a", { query: "?x=1" }), "/a?x=1");
+test("interpolate: query: round trips", () => {
+	const query = { x: "a b", y: "?&=#/+%", z: ["1", "2"] };
+	assert.deepStrictEqual(params("/a/{id}", interpolate("/a/{id}", { id: 1, query })), { ...query, id: "1" });
 });
 
 test("[DECISION-6] interpolate: values are percent encoded", () => {
@@ -489,10 +540,10 @@ for (const name of ["parse", "interpolate", "addRoute", "patternLexer", "routes"
 	});
 }
 
-test("[BUG-12] toString: router does not throw", () => {
+test("toString: router does not throw", () => {
 	assert.doesNotThrow(() => routerWith("/a").toString());
 });
 
-test("[BUG-12] toString: route does not throw", () => {
+test("toString: route does not throw", () => {
 	assert.doesNotThrow(() => new Router().addRoute("a", "/a", {}).toString());
 });
