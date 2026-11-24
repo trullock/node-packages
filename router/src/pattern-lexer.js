@@ -84,6 +84,9 @@ export default function () {
 	precompileTokens();
 
 
+	var OPTIONAL_PARAM_SEGMENT_REGEXP = new RegExp(TOKENS.OS.id + TOKENS.OP.id, 'g'),
+		OPTIONAL_REST_SEGMENT_REGEXP = new RegExp(TOKENS.OS.id + TOKENS.OR.id, 'g');
+
 	function captureVals(regex, pattern) {
 		var vals = [], match;
 		// very important to reset lastIndex since RegExp can have "g" flag
@@ -119,6 +122,11 @@ export default function () {
 			pattern = replaceTokens(pattern, 'rgx', 'save');
 			//regexp escape
 			pattern = pattern.replace(ESCAPE_CHARS_REGEXP, '\\$&');
+			//an optional segment and its preceding slash are present or absent together,
+			//otherwise "/a/:id:" would match "/a1"
+			pattern = pattern
+				.replace(OPTIONAL_PARAM_SEGMENT_REGEXP, '(?:\\/([^\\/?]+))?\\/?')
+				.replace(OPTIONAL_REST_SEGMENT_REGEXP, '(?:\\/(.+))?');
 			//restore tokens
 			pattern = replaceTokens(pattern, 'rRestore', 'res');
 

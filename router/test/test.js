@@ -119,9 +119,32 @@ test("match: ignoreCase makes matching case insensitive", () => {
 	assert.equal(router.parse("/aBC").name, "a");
 });
 
-test("[BUG-5] match: an optional segment still needs its separator", () => {
-	assert.equal(routerWith("/a/:id:").parse("/a1"), null);
-});
+for (const [pattern, url, expected] of [
+	["/a/:id:", "/a1", null],
+	["/a/:id:", "/a1?x=1", null],
+	["/a/:id:/b", "/a1/b", null],
+	["/a/:id:/b", "/ab", null],
+	["/a/:id:/b", "/a/b", { id: undefined }],
+	["/a/:id:/b", "/a/1/b", { id: "1" }],
+	["/a/:x:/:y:", "/a", { x: undefined, y: undefined }],
+	["/a/:x:/:y:", "/a/1", { x: "1", y: undefined }],
+	["/a/:x:/:y:", "/a/1/2", { x: "1", y: "2" }],
+	["/a/:x:/:y:", "/a/1/2/?q=1", { x: "1", y: "2", q: "1" }],
+	["/a/:x:/:y:", "/a1/2", null],
+	["/a/{id}/:x:", "/a/1", { id: "1", x: undefined }],
+	["/a/{id}/:x:", "/a/1/2", { id: "1", x: "2" }],
+	["/a/:r*:", "/abc", null],
+	["/a/:r*:", "/abc/d", null],
+	["/:id:", "/", { id: undefined }],
+	["/:id:", "/1", { id: "1" }],
+]) {
+	test(`optional segments: "${pattern}" ${expected ? "matches" : "does not match"} "${url}"`, () => {
+		if (expected === null)
+			assert.equal(routerWith(pattern).parse(url), null);
+		else
+			assert.deepStrictEqual(params(pattern, url), expected);
+	});
+}
 
 test("[BUG-6] match: RegExp patterns can be registered", () => {
 	const router = new Router();
