@@ -1,20 +1,39 @@
 {
   "name": "@trullock/router",
-  "version": "1.1.0",
-  "description": "URL Router",
+  "version": "2.0.0",
+  "description": "A small, dependency-free URL router which parses and builds URLs",
+  "keywords": [
+    "router",
+    "routing",
+    "url",
+    "path",
+    "spa"
+  ],
   "exports": {
     ".": "./src/index.js"
   },
   "module": "./src/index.js",
   "type": "module",
+  "sideEffects": false,
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=16.9"
+  },
   "scripts": {
     "test": "node test/test.js"
   },
-  "author": "",
+  "author": "Trullock",
   "license": "ISC",
+  "homepage": "https://github.com/trullock/node-packages/tree/main/router#readme",
+  "bugs": {
+    "url": "https://github.com/trullock/node-packages/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/trullock/node-packages.git"
+    "url": "git+https://github.com/trullock/node-packages.git",
+    "directory": "router"
   },
   "publishConfig": {
     "access": "public"

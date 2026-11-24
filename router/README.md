@@ -5,7 +5,7 @@ A small, dependency-free URL router for browsers and Node. It does two things, w
 - **parse** a URL to find which route it matches, and its parameters
 - **interpolate** a route's name and some values into a URL
 
-It doesn't touch the browser's location or history. For that, see [@trullock/page-manager](../page-manager), which is
+It doesn't touch the browser's location or history. For that, see [@trullock/page-manager](https://github.com/trullock/node-packages/tree/main/page-manager), which is
 built on it.
 
 - [Getting started](#getting-started)
@@ -256,14 +256,12 @@ Set to `true` before adding routes to match them case-insensitively.
 npm test
 ```
 
-The tests use Node's built-in runner and need no dependencies. [BUGS.md](BUGS.md) records how previously ambiguous
+The tests use Node's built-in runner (Node 18 or later) and need no dependencies. [BUGS.md](https://github.com/trullock/node-packages/blob/main/router/BUGS.md) records how previously ambiguous
 behaviour was decided.
 
 ## Changelog
 
-### Unreleased
-
-This includes breaking changes, so is intended to be 2.0.0.
+### 2.0.0
 
 **Breaking**
 
