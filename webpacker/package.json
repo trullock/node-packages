@@ -10,6 +10,10 @@
 	},
 	"author": "trullock",
 	"license": "ISC",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/trullock/node-packages.git"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
