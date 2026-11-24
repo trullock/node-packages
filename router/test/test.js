@@ -37,10 +37,6 @@ test("should match the correct route when multiple routes are added with equal p
 });
 
 
-// ---------------------------------------------------------------------------
-// Tests named [BUG-n] / [DECISION-n] fail at the time of writing. See BUGS.md.
-// ---------------------------------------------------------------------------
-
 function routerWith(...patterns) {
 	const router = new Router();
 	for (const p of patterns)
@@ -70,20 +66,27 @@ for (const [pattern, url, matches] of [
 	["/", "/b", false],
 	["/a", "/a", true],
 	["/a", "a", true],
-	["/a", "/a/", true],
-	["/a", "/a/?x=1", true],
+	["/a", "/a/", false],
+	["/a", "/a/?x=1", false],
 	["/a", "/", false],
 	["/a", "/abc", false],
 	["/a", "/a/b", false],
 	["/a", "/b/a", false],
 	["/a", "/A", false],
 	["a", "/a", true],
-	["/a/", "/a", true],
-	["/a/", "/a?x=1", true],
+	["/a/", "/a", false],
+	["/a/", "/a/", true],
+	["/a/", "/a//", false],
+	["/a/", "/a?x=1", false],
+	["/a/", "/a/?x=1", true],
+	["/a/", "/a/#h", true],
 	["/a/b", "/a/b", true],
 	["/a/b", "/a", false],
 	["/a/{id}", "/a/1", true],
-	["/a/{id}", "/a/1/", true],
+	["/a/{id}", "/a/1/", false],
+	["/a/{id}/", "/a/1/", true],
+	["/a/{id}/", "/a/1", false],
+	["/a/{id}/edit", "/a/1/edit/", false],
 	["/a/{id}", "/a", false],
 	["/a/{id}", "/a/", false],
 	["/a/{id}", "/a/1/2", false],
@@ -95,7 +98,12 @@ for (const [pattern, url, matches] of [
 	["/a+b", "/a+b", true],
 	["/a+b", "/aab", false],
 	["/a/:id:", "/a", true],
-	["/a/:id:", "/a/", true],
+	["/a/:id:", "/a/", false],
+	["/a/:id:", "/a/1/", false],
+	["/a/:id:/", "/a/", true],
+	["/a/:id:/", "/a/1/", true],
+	["/a/:id:/", "/a", false],
+	["/a/:id:/", "/a/1", false],
 	["/a/:id:", "/a/1", true],
 	["/a/:id:", "/a/1/2", false],
 	["/a/{r*}", "/a/1/2", true],
@@ -129,7 +137,8 @@ for (const [pattern, url, expected] of [
 	["/a/:x:/:y:", "/a", { x: undefined, y: undefined }],
 	["/a/:x:/:y:", "/a/1", { x: "1", y: undefined }],
 	["/a/:x:/:y:", "/a/1/2", { x: "1", y: "2" }],
-	["/a/:x:/:y:", "/a/1/2/?q=1", { x: "1", y: "2", q: "1" }],
+	["/a/:x:/:y:", "/a/1/2?q=1", { x: "1", y: "2", q: "1" }],
+	["/a/:x:/:y:", "/a/1/2/?q=1", null],
 	["/a/:x:/:y:", "/a1/2", null],
 	["/a/{id}/:x:", "/a/1", { id: "1", x: undefined }],
 	["/a/{id}/:x:", "/a/1/2", { id: "1", x: "2" }],
@@ -146,12 +155,14 @@ for (const [pattern, url, expected] of [
 	});
 }
 
-test("[BUG-6] match: RegExp patterns can be registered", () => {
-	const router = new Router();
-	router.addRoute("re", /^\/re\/(\d+)$/, {});
-	assert.equal(router.parse("/re/1").name, "re");
-	assert.equal(router.parse("/re/x"), null);
-});
+for (const pattern of [/^\/re\/(\d+)$/, undefined, null, 1]) {
+	test(`registration: a pattern of ${pattern} throws and is not registered`, () => {
+		const router = new Router();
+		assert.throws(() => router.addRoute("bad", pattern, {}), /pattern should be a string/);
+		assert.equal(router.parse("/re/1"), null);
+		assert.throws(() => router.interpolate("bad", {}), /Cannot find route/);
+	});
+}
 
 // --- route precedence and result -------------------------------------------
 
@@ -205,20 +216,45 @@ test("result: parsing is repeatable and results are independent", () => {
 	assert.equal(router.parse("/a/2").params.x, undefined);
 });
 
-test("[DECISION-1] result: path keeps the url's case", () => {
+test("result: path keeps the url's case", () => {
 	assert.equal(routerWith("/a/{id}").parse("/a/AbC").path, "/a/AbC");
 });
 
-test("[DECISION-2] result: path is the same with and without a trailing slash", () => {
+test("result: paths differing only by case are different", () => {
 	const router = routerWith("/a/{id}");
-	assert.equal(router.parse("/a/1/").path, router.parse("/a/1").path);
+	assert.notEqual(router.parse("/a/AbC").path, router.parse("/a/aBc").path);
 });
+
+test("result: path keeps its case when ignoreCase is on", () => {
+	const router = new Router();
+	router.ignoreCase = true;
+	router.addRoute("a", "/a/{id}", {});
+	assert.equal(router.parse("/A/AbC").path, "/A/AbC");
+});
+
+test("result: a trailing slash makes a different url", () => {
+	const router = routerWith(["without", "/a/{id}", {}], ["with", "/a/{id}/", {}]);
+	const without = router.parse("/a/1?x=1");
+	const withSlash = router.parse("/a/1/?x=1");
+	assert.equal(without.name, "without");
+	assert.equal(without.path, "/a/1");
+	assert.equal(withSlash.name, "with");
+	assert.equal(withSlash.path, "/a/1/");
+	assert.notEqual(without.pattern, withSlash.pattern);
+});
+
+for (const pattern of ["/a", "/a/", "/a/{id}", "/a/{id}/", "/a/:id:", "/a/:id:/"]) {
+	test(`round trip: "${pattern}" matches what it interpolates`, () => {
+		for (const values of [{ id: 1 }, { id: 1, query: { x: 1 } }])
+			assert.notEqual(routerWith(pattern).parse(interpolate(pattern, values)), null);
+	});
+}
 
 // --- path params -----------------------------------------------------------
 
 for (const [pattern, url, expected] of [
 	["/a/{id}", "/a/1", { id: "1" }],
-	["/a/{id}", "/a/1/", { id: "1" }],
+	["/a/{id}/", "/a/1/", { id: "1" }],
 	["/a/{id}", "/a/AbC", { id: "AbC" }],
 	["/a/{id}/b/{id2}", "/a/1/b/2", { id: "1", id2: "2" }],
 	["/a/{x}-{y}", "/a/1-2", { x: "1", y: "2" }],
@@ -238,27 +274,70 @@ test("path params: take precedence over query params of the same name", () => {
 	assert.equal(params("/a/{id}", "/a/1?id=2").id, "1");
 });
 
-test("[BUG-4] rest params: are named without the asterisk", () => {
+test("rest params: are named without the asterisk", () => {
 	assert.equal(params("/a/{r*}", "/a/1/2").r, "1/2");
 	assert.equal(params("/a/:r*:", "/a/1/2").r, "1/2");
 });
 
-test("[BUG-4] rest params: required rest does not swallow the query string", () => {
+test("rest params: required rest does not swallow the query string", () => {
 	assert.deepStrictEqual(params("/a/{r*}", "/a/1/2?x=1"), { r: "1/2", x: "1" });
 });
 
-test("[BUG-4] rest params: optional rest does not swallow the query string", () => {
+test("rest params: optional rest does not swallow the query string", () => {
 	assert.deepStrictEqual(params("/a/:r*:", "/a?x=1"), { r: undefined, x: "1" });
 });
 
-test("[BUG-7] shouldTypecast does not throw", () => {
-	const router = new Router();
-	router.shouldTypecast = true;
-	router.addRoute("a", "/a/{id}", {});
-	assert.equal(router.parse("/a/1").params.id, 1);
+for (const [pattern, url, expected] of [
+	["/a/{r*}", "/a/1", { r: "1" }],
+	["/a/{r*}", "/a/1?x=1", { r: "1", x: "1" }],
+	["/a/{r*}", "/a/1/2/3?x=/b/c", { r: "1/2/3", x: "/b/c" }],
+	["/a/{r*}", "/a?x=1", null],
+	["/a/{r*}", "/a/?x=1", null],
+	["/a/{r*}/b", "/a/1/2/b?x=1", { r: "1/2", x: "1" }],
+	["/a/{r*}/b", "/a/1/2", null],
+	["/a/{id}/{r*}", "/a/1/2/3", { id: "1", r: "2/3" }],
+	["/a/:r*:", "/a", { r: undefined }],
+	["/a/:r*:", "/a/", null],
+	["/a/:r*:", "/a/1/2/", { r: "1/2/" }],
+	["/a/:r*:", "/a/?x=1", null],
+	["/a/:r*:", "/a/1/2?x=1", { r: "1/2", x: "1" }],
+	["/a/:r*:/b", "/a/b", { r: undefined }],
+	["/a/:r*:/b", "/a/1/2/b", { r: "1/2" }],
+	["/{r*}", "/1/2?x=1", { r: "1/2", x: "1" }],
+	["/:r*:", "/?x=1", { r: undefined, x: "1" }],
+	["/:r*:", "/1/2?x=1", { r: "1/2", x: "1" }],
+]) {
+	test(`rest params: "${pattern}" ${expected ? "matches" : "does not match"} "${url}"`, () => {
+		if (expected === null)
+			assert.equal(routerWith(pattern).parse(url), null);
+		else
+			assert.deepStrictEqual(params(pattern, url), expected);
+	});
+}
+
+for (const [pattern, values, expected] of [
+	["/a/{r*}", { r: "x" }, "/a/x"],
+	["/a/{r*}/b", { r: "x/y" }, "/a/x/y/b"],
+	["/a/{r*}", { r: "x/y", query: { z: 1 } }, "/a/x/y?z=1"],
+	["/a/:r*:", { r: "x/y" }, "/a/x/y"],
+	["/a/:r*:", { query: { z: 1 } }, "/a?z=1"],
+	["/a/:r*:/b", {}, "/a/b"],
+]) {
+	test(`rest params: interpolate "${pattern}" with ${JSON.stringify(values)}`, () => {
+		assert.equal(interpolate(pattern, values), expected);
+	});
+}
+
+test("rest params: a missing required rest throws", () => {
+	assert.throws(() => interpolate("/a/{r*}", {}), /is required/);
 });
 
-test("[DECISION-3] path params: are percent decoded", () => {
+test("rest params: round trip", () => {
+	const values = { r: "x/y/z", id: "1" };
+	assert.deepStrictEqual(params("/a/{id}/{r*}", interpolate("/a/{id}/{r*}", values)), values);
+});
+
+test("path params: are percent decoded", () => {
 	assert.equal(params("/a/{id}", "/a/x%20y").id, "x y");
 	assert.equal(params("/a/{id}", "/a/x%2Fy").id, "x/y");
 });
@@ -306,24 +385,78 @@ test("query: malformed values are kept raw and don't affect other params", () =>
 	assert.deepStrictEqual(params("/a", "/a?x=100%&y=a%20b&z=%E0%A4%A"), { x: "100%", y: "a b", z: "%E0%A4%A" });
 });
 
-test("[BUG-3] query: a key with no value keeps its name", () => {
-	assert.deepStrictEqual(params("/a", "/a?flag"), { flag: "" });
+for (const [query, expected] of [
+	["?flag", { flag: null }],
+	["?flag=", { flag: "" }],
+	["?flag&x=1", { flag: null, x: "1" }],
+	["?x=1&flag", { x: "1", flag: null }],
+	["?x=1&flag&y=2", { x: "1", flag: null, y: "2" }],
+	["?flag#h", { flag: null, hash: "h" }],
+	["?my%20flag", { "my flag": null }],
+	["?flag&flag", { flag: [null, null] }],
+	["?flag&flag=1", { flag: [null, "1"] }],
+	["?flag=1&flag", { flag: ["1", null] }],
+]) {
+	test(`query: valueless: "${query}"`, () => {
+		assert.deepStrictEqual(params("/a", "/a" + query), expected);
+	});
+}
+
+test("query: a valueless param doesn't override a path param", () => {
+	assert.equal(params("/a/{id}", "/a/1?id").id, "1");
 });
 
-test("[BUG-3] query: an empty part does not discard later params", () => {
+for (const [query, expected] of [
+	["?&x=1", { x: "1" }],
+	["?x=1&", { x: "1" }],
+	["?&", {}],
+	["?x=?", { x: "?" }],
+	["?x=1&y=/b?z", { x: "1", y: "/b?z" }],
+	["?a%3Db=1", { "a=b": "1" }],
+	["?x%=1", { "x%": "1" }],
+	["?x%20y=1&x%20y=2", { "x y": ["1", "2"] }],
+]) {
+	test(`query: edge case: "${query}"`, () => {
+		assert.deepStrictEqual(params("/a", "/a" + query), expected);
+	});
+}
+
+test("query: an empty part does not discard later params", () => {
 	assert.deepStrictEqual(params("/a", "/a?x=1&&y=2"), { x: "1", y: "2" });
 });
 
-test("[BUG-3] query: a question mark in a value is kept", () => {
+test("query: a question mark in a value is kept", () => {
 	assert.equal(params("/a", "/a?x=a?b").x, "a?b");
 });
 
-test("[BUG-3] query: keys are percent decoded", () => {
+test("query: keys are percent decoded", () => {
 	assert.deepStrictEqual(params("/a", "/a?x%20y=1"), { "x y": "1" });
 });
 
-test("[DECISION-4] query: plus decodes to a space", () => {
-	assert.equal(params("/a", "/a?x=a+b").x, "a b");
+for (const [query, expected] of [
+	["?x=a+b", { x: "a b" }],
+	["?x=a++b+", { x: "a  b " }],
+	["?x=a%2Bb", { x: "a+b" }],
+	["?x=a+b%20c%2Bd", { x: "a b c+d" }],
+	["?x+y=1", { "x y": "1" }],
+	["?my+flag", { "my flag": null }],
+	["?x=a+b%", { x: "a b%" }],
+]) {
+	test(`query: plus is a space: "${query}"`, () => {
+		assert.deepStrictEqual(params("/a", "/a" + query), expected);
+	});
+}
+
+test("path params: plus is a literal plus", () => {
+	assert.equal(params("/a/{id}", "/a/x+y").id, "x+y");
+});
+
+test("hash: plus is a literal plus", () => {
+	assert.equal(routerWith("/a").parse("/a#x+y").params.hash, "x+y");
+});
+
+test("interpolate: a plus in a query value is encoded", () => {
+	assert.equal(interpolate("/a", { query: { x: "a+b" } }), "/a?x=a%2Bb");
 });
 
 // --- hash ------------------------------------------------------------------
@@ -346,8 +479,45 @@ test("hash: contents are not parsed as query", () => {
 	assert.equal(routerWith("/a").parse("/a#h?x=1").params.x, undefined);
 });
 
-test("[DECISION-5] hash: a query param called hash survives when there is no fragment", () => {
-	assert.equal(routerWith("/a").parse("/a?hash=q").params.hash, "q");
+test("reserved names: a query param called hash is ignored", () => {
+	assert.equal(routerWith("/a").parse("/a?hash=q").params.hash, undefined);
+	assert.deepStrictEqual(params("/a", "/a?hash=q&x=1#h"), { x: "1", hash: "h" });
+});
+
+test("reserved names: a query param called __proto__ is ignored", () => {
+	const result = routerWith("/a").parse("/a?__proto__=q&x=1").params;
+	assert.equal(Object.getPrototypeOf(result), Object.prototype);
+	assert.equal(result.x, "1");
+});
+
+for (const name of ["hash", "query", "__proto__"]) {
+	for (const pattern of [`/a/{${name}}`, `/a/:${name}:`, `/a/{${name}*}`, `/a/:${name}*:`, `/a{?${name}}`, `/a:?${name}:`]) {
+		test(`reserved names: pattern "${pattern}" throws and is not registered`, () => {
+			const router = new Router();
+			assert.throws(() => router.addRoute("a", pattern, {}), /name is reserved/);
+			assert.equal(router.parse("/a/1"), null);
+			assert.throws(() => router.interpolate("a", {}), /Cannot find route/);
+		});
+	}
+}
+
+for (const name of ["hashes", "Hash", "queryId", "myhash"]) {
+	test(`reserved names: "${name}" is allowed`, () => {
+		assert.deepStrictEqual(params(`/a/{${name}}`, "/a/1"), { [name]: "1" });
+	});
+}
+
+test("reserved names: a literal segment is allowed", () => {
+	assert.notEqual(routerWith("/hash/query").parse("/hash/query"), null);
+});
+
+test("reserved names: interpolating a query param called hash throws", () => {
+	assert.throws(() => interpolate("/a", { query: { hash: "q" } }), /name is reserved/);
+});
+
+test("reserved names: a query param called query is allowed", () => {
+	const query = { query: "q" };
+	assert.deepStrictEqual(params("/a", interpolate("/a", { query })), query);
 });
 
 // --- interpolate -----------------------------------------------------------
@@ -383,9 +553,32 @@ for (const id of [undefined, null]) {
 	});
 }
 
-test("interpolate: a slash in a plain segment throws", () => {
-	assert.throws(() => interpolate("/a/{id}", { id: "x/y" }), /Invalid value "x\/y"/);
+test("interpolate: a slash in a plain segment is encoded", () => {
+	assert.equal(interpolate("/a/{id}", { id: "x/y" }), "/a/x%2Fy");
 });
+
+test("interpolate: an object as a path param throws", () => {
+	assert.throws(() => interpolate("/a/{id}", { id: {} }), /objects are only supported for query strings/);
+});
+
+test("interpolate: characters which are safe in a path stay readable", () => {
+	assert.equal(interpolate("/a/{id}", { id: "a:b@c$d&e+f,g;h=i" }), "/a/a:b@c$d&e+f,g;h=i");
+});
+
+for (const [query, expected] of [
+	[{ flag: null }, "/a?flag"],
+	[{ flag: "" }, "/a?flag="],
+	[{ flag: undefined }, "/a"],
+	[{ x: 1, flag: null, y: undefined, z: 2 }, "/a?x=1&flag&z=2"],
+	[{ flag: [null, "1"] }, "/a?flag&flag=1"],
+	[{ x: ["1", undefined, "2"] }, "/a?x=1&x=2"],
+	[{ "my flag": null }, "/a?my%20flag"],
+	["x=a#b", "/a?x=a%23b"],
+]) {
+	test(`interpolate: query values: ${JSON.stringify(query)} to "${expected}"`, () => {
+		assert.equal(interpolate("/a", { query }), expected);
+	});
+}
 
 test("interpolate: does not mutate its values", () => {
 	const values = Object.freeze({ id: 1 });
@@ -419,7 +612,7 @@ for (const [pattern, values, expected] of [
 	});
 }
 
-test("[BUG-4] interpolate: rest params accept slashes", () => {
+test("interpolate: rest params accept slashes", () => {
 	assert.equal(interpolate("/a/{r*}", { r: "x/y" }), "/a/x/y");
 });
 
@@ -448,7 +641,10 @@ for (const [pattern, values, expected] of [
 	["/a", { query: { x: 1, y: 2 } }, "/a?x=1&y=2"],
 	["/a", { query: { x: "a/b?c&d=e" } }, "/a?x=a%2Fb%3Fc%26d%3De"],
 	["/a", { query: { "x[]": [1, 2] } }, "/a?x[]=1&x[]=2"],
-	["/a/", { query: { x: 1 } }, "/a?x=1"],
+	["/a/", { query: { x: 1 } }, "/a/?x=1"],
+	["/a/", { query: {} }, "/a/"],
+	["/a/{id}/", { id: 1, query: { x: 1 } }, "/a/1/?x=1"],
+	["/a/:id:/", { query: { x: 1 } }, "/a/?x=1"],
 	["/", { query: { x: 1 } }, "/?x=1"],
 	["/", { query: {} }, "/"],
 	["/a/{id}", { id: 1, query: { x: 1 } }, "/a/1?x=1"],
@@ -472,15 +668,15 @@ test("interpolate: query: round trips", () => {
 	assert.deepStrictEqual(params("/a/{id}", interpolate("/a/{id}", { id: 1, query })), { ...query, id: "1" });
 });
 
-test("[DECISION-6] interpolate: values are percent encoded", () => {
+test("interpolate: values are percent encoded", () => {
 	assert.equal(interpolate("/a/{id}", { id: "a?b#c d" }), "/a/a%3Fb%23c%20d");
 });
 
-test("[DECISION-8] interpolate: a trailing slash in the pattern is kept", () => {
+test("interpolate: a trailing slash in the pattern is kept", () => {
 	assert.equal(interpolate("/a/", {}), "/a/");
 });
 
-test("[DECISION-7] interpolate: an empty required param throws", () => {
+test("interpolate: an empty required param throws", () => {
 	assert.throws(() => interpolate("/a/{id}", { id: "" }), /required/);
 });
 
@@ -493,8 +689,27 @@ for (const id of ["1", "AbC", "x-y_z.~", "a:b", "a=b&c"]) {
 }
 
 for (const id of ["a?b", "a#b"]) {
-	test(`[DECISION-6] round trip: "${id}"`, () => {
+	test(`round trip: "${id}"`, () => {
 		assert.equal(params("/a/{id}", interpolate("/a/{id}", { id })).id, id);
+	});
+}
+
+const awkward = ["1", "a b", "a/b", "a?b", "a#b", "a%b", "%", "%20", "%2F", "a+b", "a&b=c", "ü", "日本", "😀", "{x}", ":x:", "a*", "[]", "\"'", "$&", "a\\b"];
+
+for (const value of awkward) {
+	test(`round trip: path param ${JSON.stringify(value)}`, () => {
+		assert.deepStrictEqual(params("/a/{id}/b", interpolate("/a/{id}/b", { id: value })), { id: value });
+		assert.deepStrictEqual(params("/a/:id:", interpolate("/a/:id:", { id: value })), { id: value });
+	});
+
+	test(`round trip: rest param ${JSON.stringify(value)}`, () => {
+		const values = { r: `x/${value}/y` };
+		assert.deepStrictEqual(params("/a/{r*}", interpolate("/a/{r*}", values)), values);
+	});
+
+	test(`round trip: query ${JSON.stringify(value)}`, () => {
+		const query = { v: value, [value]: "v", list: [value, "", null] };
+		assert.deepStrictEqual(params("/a", interpolate("/a", { query })), query);
 	});
 }
 
@@ -522,18 +737,22 @@ test("registration: one name per route, many routes per pattern", () => {
 
 test("registration: a duplicate name throws", () => {
 	const router = routerWith(["a", "/a", {}]);
-	assert.throws(() => router.addRoute("a", "/b", {}));
+	assert.throws(() => router.addRoute("a", "/b", {}), /A route called a already exists/);
 });
 
-test("[BUG-10] registration: a rejected duplicate leaves the router unchanged", () => {
+test("interpolate: names of Object.prototype members are unknown routes", () => {
+	assert.throws(() => new Router().interpolate("toString", {}), /Cannot find route by name toString/);
+});
+
+test("registration: a rejected duplicate leaves the router unchanged", () => {
 	const router = routerWith(["a", "/a", {}]);
 	assert.throws(() => router.addRoute("a", "/b", {}));
 	assert.equal(router.interpolate("a"), "/a");
 	assert.equal(router.parse("/b"), null);
 });
 
-for (const name of ["parse", "interpolate", "addRoute", "patternLexer", "routes"]) {
-	test(`[BUG-11] registration: a route can be called "${name}"`, () => {
+for (const name of ["parse", "interpolate", "addRoute", "patternLexer", "routes", "routesByName", "constructor", "toString", "__proto__"]) {
+	test(`registration: a route can be called "${name}"`, () => {
 		const router = routerWith([name, "/a", {}], ["other", "/b", {}]);
 		assert.equal(router.parse("/a").name, name);
 		assert.equal(router.interpolate(name, {}), "/a");

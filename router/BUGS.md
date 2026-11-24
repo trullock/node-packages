@@ -1,38 +1,25 @@
 # Router: known failures
 
-Run `npm test`. Every failing test is tagged `[BUG-n]` or `[DECISION-n]`, matching the entries below.
-BUG-1 (`isArray`, query object interpolation), BUG-2 (malformed encoding), BUG-5 (optional segment separators), BUG-8 (omitted segments), BUG-9 (query formatting) and BUG-12 (broken `toString`, removed) are fixed. The rest await review.
+None: all tests pass (`npm test`). BUG-1 to 12 and DECISION-1 to 8 are resolved. RegExp routes (BUG-6), `shouldTypecast`
+(BUG-7), `toString` (BUG-12) and the slash modes were removed, as were the per-route properties on the router (BUG-11).
 
-- **BUG**: throws unexpectedly, loses data, or a feature present in the code does not work.
-- **DECISION**: the test states a proposed behaviour, but the current one may be intended. If so, change the test.
-
-## Bugs
-
-| # | Problem | Cause | Severity |
-|---|---|---|---|
-| 3 | Query parsing loses data: `?flag` becomes `{"": "flag"}`; `?x=1&&y=2` drops `y`; `?x=a?b` gives `ab`; keys are not decoded | `decodeQueryString`: no check for a missing `=`; loop stops at an empty part; `replace('?', '')` removes a value's `?` after the leading one is already gone | High |
-| 4 | Rest params are named `r*`, swallow the query, and cannot be interpolated | `getParamIds` keeps the `*`; rest tokens compile to `.+` / `.*`, which cross `?`; interpolation looks up `r*` | Medium |
-| 6 | RegExp patterns throw when registered, despite `isRegExp` handling | `addRoute` calls `pattern.endsWith`; interpolation of a RegExp would need defining too | Low |
-| 7 | `shouldTypecast` throws | `typecastArrayValues` does not exist | Low |
-| 10 | A duplicate name throws, but the second route stays registered and takes over `interpolate` | State changes before `defineProperty` throws | Low |
-| 11 | Route names such as `parse` or `routes` break the router | Each name is defined as a property on the instance | Low |
-
-## Decisions
-
-| # | Proposed (tested) | Current | Consideration |
-|---|---|---|---|
-| 1 | `path` keeps case | Lowercased | page-manager uses `path` as cache key and same-page test, so ids differing only by case collide |
-| 2 | `path` ignores a trailing slash | `/a/1/` and `/a/1` differ | page-manager treats them as different pages |
-| 3 | Path params are decoded | Raw, though query values are decoded | Breaking for callers who decode themselves |
-| 4 | `+` in a query is a space | Literal `+` | Form encoding convention; breaks links with an unencoded `+` |
-| 5 | `?hash=q` is kept when there is no fragment | Always overwritten | Alternatively, reserve the name |
-| 6 | `interpolate` encodes values | Inserted raw, so `?` and `#` change the URL | Decide with 3. Breaking for callers who pre-encode |
-| 7 | An empty required param throws | `/a/{id}` gives `/a/`, which does not match its own route | |
-| 8 | `/a/` interpolates to `/a/` | Gives `/a` | Harmless, as matching accepts both |
-
-## Behaviour worth knowing (passing)
+## Behaviour worth knowing
 
 - The **first** registered route wins ties; higher priority always wins.
 - Matching is case-sensitive unless `router.ignoreCase` is set before `addRoute`.
 - Path params beat query params with the same name. Unused `interpolate` values are ignored.
-- A `/` in an ordinary segment throws on interpolation.
+- A trailing slash is significant: `/a` and `/a/` are different URLs and need separate routes (formerly DECISION-2 and 8).
+  The leading slash is optional. An optional segment is omitted along with its slash, so `/a/:id:` matches `/a`, not `/a/`.
+- A query param without a value (`?flag`) is `null`; with an empty value (`?flag=`) it is `""`.
+- Interpolation is the inverse of parsing (formerly DECISION-3, 6 and 7): path params are encoded and decoded, empty
+  required params throw, `null` query values give `?flag`, and `undefined` ones are skipped.
+  Values are strings after parsing. Inherently ambiguous cases do not round trip:
+  - a later optional segment without the earlier one (`/a/:x:/:y:` with only `y`)
+  - adjacent params sharing a separator (`/a/{x}-{y}` with `-` in a value)
+  - a query array of one or zero items
+  - query params with the same name as a path param
+- `+` is a space in a query (formerly DECISION-4), but literal in a path or hash. Interpolation writes a literal plus in a query object as `%2B`.
+- `path` keeps the case of the URL (formerly DECISION-1), including when `ignoreCase` is on.
+- `hash`, `query` and `__proto__` are reserved (formerly DECISION-5): `addRoute` rejects them as param names.
+  In a URL, query params called `hash` or `__proto__` are ignored, and `interpolate` rejects them in a query object.
+- A duplicate route name throws and leaves the router unchanged. Any name is allowed, including `parse` and `toString`.

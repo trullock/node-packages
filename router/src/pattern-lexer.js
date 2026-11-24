@@ -4,8 +4,7 @@ export default function () {
 		//match chars that should be escaped on string regexp
 		ESCAPE_CHARS_REGEXP = /[\\.+*?\^$\[\](){}\/'#]/g,
 
-		//trailing slashes (begin/end of string)
-		LOOSE_SLASHES_REGEXP = /^\/|\/$/g,
+		LEADING_SLASH_REGEXP = /^\//,
 
 		//params - everything between `{ }` or `: :`
 		PARAMS_REGEXP = /(?:\{|:)([^}:]+)(?:\}|:)/g,
@@ -15,15 +14,15 @@ export default function () {
 		TOKENS = {
 			'OS': {
 				//optional slashes
-				//slash between `::` or `}:` or `\w:` or `:{?` or `}{?` or `\w{?`
-				rgx: /([:}]|\w(?=\/))\/?(:|(?:\{\?))/g,
+				//slash between `::` or `}:` or `\w:`, but not before a query string, where a slash is significant
+				rgx: /([:}]|\w(?=\/))\/?(:(?!\?))/g,
 				save: '$1{{id}}$2',
 				res: '\\/?'
 			},
 			'RS': {
 				//required slashes
 				//used to insert slash between `:{` and `}{`
-				rgx: /([:}])\/?(\{)/g,
+				rgx: /([:}])\/?(\{(?!\?))/g,
 				save: '$1{{id}}$2',
 				res: '\\/'
 			},
@@ -42,12 +41,12 @@ export default function () {
 			'OR': {
 				//optional rest - everything in between `: *:`
 				rgx: /:([^:]+)\*:/g,
-				res: '(.*)?' // optional group to avoid passing empty string as captured
+				res: '([^?]*)?' // optional group to avoid passing empty string as captured
 			},
 			'RR': {
 				//rest param - everything in between `{ *}`
 				rgx: /\{([^}]+)\*\}/g,
-				res: '(.+)'
+				res: '([^?]+)'
 			},
 			// required/optional params should come after rest segments
 			'RP': {
@@ -58,7 +57,7 @@ export default function () {
 			'OP': {
 				//optional params - everything between `: :`
 				rgx: /:([^:]+):/g,
-				res: '([^\\/?]+)?\/?'
+				res: '([^\\/?]+)?'
 			}
 		};
 
@@ -100,15 +99,20 @@ export default function () {
 		return vals;
 	}
 
+	//rest params are declared as `name*` but known as `name`
+	function stripRest(id) {
+		return id.replace(/\*$/, '');
+	}
+
 	function getParamIds(pattern) {
-		return captureVals(PARAMS_REGEXP, pattern);
+		return captureVals(PARAMS_REGEXP, pattern).map(stripRest);
 	}
 
 	function compilePattern(pattern, ignoreCase) {
 		pattern = pattern || '';
 
 		if (pattern) {
-			pattern = pattern.replace(LOOSE_SLASHES_REGEXP, '');
+			pattern = pattern.replace(LEADING_SLASH_REGEXP, '');
 
 			//save tokens
 			pattern = replaceTokens(pattern, 'rgx', 'save');
@@ -117,16 +121,13 @@ export default function () {
 			//an optional segment and its preceding slash are present or absent together,
 			//otherwise "/a/:id:" would match "/a1"
 			pattern = pattern
-				.replace(OPTIONAL_PARAM_SEGMENT_REGEXP, '(?:\\/([^\\/?]+))?\\/?')
-				.replace(OPTIONAL_REST_SEGMENT_REGEXP, '(?:\\/(.+))?');
+				.replace(OPTIONAL_PARAM_SEGMENT_REGEXP, '(?:\\/([^\\/?]+))?')
+				.replace(OPTIONAL_REST_SEGMENT_REGEXP, '(?:\\/([^?]+))?');
 			//restore tokens
 			pattern = replaceTokens(pattern, 'rRestore', 'res');
 
 			pattern = '\\/?' + pattern;
 		}
-
-		//single slash is treated as empty and end slash is optional
-		pattern += '\\/?';
 
 		return new RegExp('^' + pattern + '$', ignoreCase ? 'i' : '');
 	}
@@ -142,15 +143,41 @@ export default function () {
 		return pattern;
 	}
 
-	function getParamValues(request, regexp, shouldTypecast) {
+	function getParamValues(request, regexp) {
 		var vals = regexp.exec(request);
 		if (vals) {
 			vals.shift();
-			if (shouldTypecast) {
-				vals = typecastArrayValues(vals);
-			}
 		}
 		return vals;
+	}
+
+	//encodes a path segment, leaving readable the characters which are safe within one
+	function encodeSegment(val) {
+		return encodeURIComponent(val).replace(/%(?:3A|40|24|26|2B|2C|3B|3D)/g, decodeURIComponent);
+	}
+
+	//the inverse of parsing: null is a name with no value, undefined is absent
+	function encodeQueryString(query) {
+		if (typeof query !== 'object')
+			return String(query).replace(/^\?/, '').replace(/#/g, '%23');
+
+		var parts = [];
+
+		for (var key of Object.keys(query)) {
+			//parsing can't return these, the fragment and the prototype take their place
+			if (key === 'hash' || key === '__proto__')
+				throw new Error('A query param can\'t be called "' + key + '", the name is reserved.');
+
+			for (var val of [].concat(query[key])) {
+				if (val === undefined)
+					continue;
+
+				var name = encodeURIComponent(key).replace(/%5B%5D$/, '[]');
+				parts.push(val === null ? name : name + '=' + encodeURIComponent(val));
+			}
+		}
+
+		return parts.join('&');
 	}
 
 	function interpolate(pattern, replacements) {
@@ -164,48 +191,30 @@ export default function () {
 		var replaceFn = function (match, prop) {
 			var val;
 			var isQuery = prop.substr(0, 1) === '?';
-			prop = isQuery ? prop.substr(1) : prop;
-			if (replacements[prop] != null) {
-				if (typeof replacements[prop] === 'object') {
-					var queryParts = [], rep;
-					for (var key in replacements[prop]) {
-						rep = replacements[prop][key];
-						if (Array.isArray(rep)) {
-							for (var k in rep) {
-								if (key.slice(-2) == '[]') {
-									queryParts.push(encodeURIComponent(key.slice(0, -2)) + '[]=' + encodeURIComponent(rep[k]));
-								} else {
-									queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(rep[k]));
-								}
-							}
-						}
-						else {
-							queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(rep));
-						}
-					}
-					val = '?' + queryParts.join('&');
-				} else {
-					// make sure value is a string see #gh-54
-					val = String(replacements[prop]);
-				}
+			var isRest = match.indexOf('*') !== -1;
+			var isRequired = match.indexOf('{') !== -1;
+			var replacement = replacements[stripRest(isQuery ? prop.substr(1) : prop)];
 
-				if (isQuery) {
-					val = val.replace(/^\?/, '');
-					if (!val && match.indexOf('{') !== -1)
-						throw new Error('The segment ' + match + ' is required.');
-					if (val)
-						val = QUERY + '?' + val;
-				}
-				else if (match.indexOf('*') === -1 && val.indexOf('/') !== -1) {
-					throw new Error('Invalid value "' + val + '" for segment "' + match + '".');
-				}
+			if (replacement == null)
+				val = '';
+			else if (isQuery) {
+				val = encodeQueryString(replacement);
+				if (val)
+					val = QUERY + '?' + val;
 			}
-			else if (match.indexOf('{') !== -1) {
+			else if (typeof replacement === 'object')
+				throw new Error('Invalid value for segment "' + match + '", objects are only supported for query strings.');
+			else if (isRest)
+				val = String(replacement).split('/').map(encodeSegment).join('/');
+			else
+				val = encodeSegment(replacement);
+
+			// an empty value wouldn't match this route when parsed
+			if (!val && isRequired)
 				throw new Error('The segment ' + match + ' is required.');
-			}
 
 			// an empty optional param is the same as an omitted one
-			if (!val && match.indexOf('{') === -1)
+			if (!val)
 				val = OMITTED;
 
 			return val;

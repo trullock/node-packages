@@ -1,15 +1,5 @@
 import PatternLexer from './pattern-lexer.js'
 
-function isKind(val, kind)
-{
-	return '[object ' + kind + ']' === Object.prototype.toString.call(val);
-}
-
-function isRegExp(val)
-{
-	return isKind(val, 'RegExp');
-}
-
 // malformed encoding (e.g. "%") is left as-is, a bad link shouldn't break parsing
 function safeDecode(str)
 {
@@ -23,42 +13,61 @@ function safeDecode(str)
 	}
 }
 
+// in a query string (unlike in a path) a literal plus means a space
+function decodeQueryPart(str)
+{
+	return safeDecode(str.replace(/\+/g, ' '));
+}
+
+// queryStr must not include the leading "?"
 function decodeQueryString(queryStr)
 {
-	let queryArr = (queryStr || '').replace('?', '').split('&'),
-		i = -1,
-		obj = {},
-		equalIndex, cur, pValue, pName;
+	let obj = {};
 
-	while ((cur = queryArr[++i]))
+	for (let part of queryStr.split('&'))
 	{
-		equalIndex = cur.indexOf('=');
-		pName = cur.substring(0, equalIndex);
-		pValue = safeDecode(cur.substring(equalIndex + 1));
+		if (!part)
+			continue;
 
-		if (Object.hasOwn(obj, pName))
-		{
-			if(Array.isArray(obj[pName]))
-				obj[pName].push(pValue);
-			else
-				obj[pName] = [obj[pName], pValue];
-			
-		}
+		let equalIndex = part.indexOf('=');
+		let hasValue = equalIndex > -1;
+		let name = decodeQueryPart(hasValue ? part.substring(0, equalIndex) : part);
+		// "?flag" has no value, as distinct from the empty value of "?flag="
+		let value = hasValue ? decodeQueryPart(part.substring(equalIndex + 1)) : null;
+
+		if (!Object.hasOwn(obj, name))
+			obj[name] = value;
+		else if (Array.isArray(obj[name]))
+			obj[name].push(value);
 		else
-		{
-			obj[pName] = pValue;
-	   }
+			obj[name] = [obj[name], value];
 	}
+
 	return obj;
 }
 
+// names which can't be used for params in a route's pattern:
+// - hash holds the fragment of a parsed url
+// - query holds the query string values when interpolating
+// - __proto__ can't be stored as an ordinary property
+const RESERVED_NAMES = new Set(['hash', 'query', '__proto__']);
+
+function checkReservedParams(pattern, paramIds)
+{
+	for (let id of paramIds)
+	{
+		let name = id.replace(/^\?/, '');
+		if (RESERVED_NAMES.has(name))
+			throw new Error(`Route pattern ${pattern} can't have a param called "${name}", the name is reserved.`);
+	}
+}
+
 function Route(name, pattern, data, priority, router) {
-	var isRegexPattern = isRegExp(pattern);
 	this._name = name;
 	this._router = router;
 	this._pattern = pattern;
-	this._paramsIds = isRegexPattern ? null : router.patternLexer.getParamIds(pattern);
-	this._matchRegexp = isRegexPattern ? pattern : router.patternLexer.compilePattern(pattern, router.ignoreCase);
+	this._paramsIds = router.patternLexer.getParamIds(pattern);
+	this._matchRegexp = router.patternLexer.compilePattern(pattern, router.ignoreCase);
 	this._data = data;
 	this._priority = priority || 0;
 }
@@ -70,8 +79,7 @@ Route.prototype = {
 	},
 
 	_getParamsObject: function (request) {
-		let shouldTypecast = this._router.shouldTypecast
-		let values = this._router.patternLexer.getParamValues(request, this._matchRegexp, shouldTypecast)
+		let values = this._router.patternLexer.getParamValues(request, this._matchRegexp)
 		let o = {}
 		let n = values.length
 		let param
@@ -79,9 +87,6 @@ Route.prototype = {
 
 		while (n--)
 		{
-			if (!this._paramsIds)
-				continue;
-
 			param = this._paramsIds[n];
 			val = values[n];
 			
@@ -102,7 +107,8 @@ Route.prototype = {
 			}
 			else 
 			{
-				o[param] = val;
+				// optional params have no value when omitted
+				o[param] = typeof val === 'string' ? safeDecode(val) : val;
 			}
 			
 		}
@@ -130,13 +136,22 @@ export default class
 	constructor()
 	{
 		this.routes = [];
-		this.routesByName = {};
+		// no prototype, so that any name is usable
+		this.routesByName = Object.create(null);
 		this.patternLexer = PatternLexer();
 	}
 
 	addRoute (name, pattern, data, priority)
 	{
-		pattern += pattern.endsWith('/') ? ':?query:' : '/:?query:';
+		if (typeof pattern !== 'string')
+			throw new TypeError('Route pattern should be a string.');
+
+		if (this.routesByName[name])
+			throw new Error(`A route called ${name} already exists.`);
+
+		checkReservedParams(pattern, this.patternLexer.getParamIds(pattern));
+
+		pattern += ':?query:';
 		var route = new Route(name, pattern, data, priority, this);
 
 		var n = this.routes.length;
@@ -148,7 +163,6 @@ export default class
 		this.routes.splice(n + 1, 0, route);
 
 		this.routesByName[name] = route;
-		Object.defineProperty(this, name, { get: () => pattern });
 
 		return route;
 	}
@@ -187,7 +201,7 @@ export default class
 				params.hash = hash;
 
 				return {
-					path: path.toLowerCase(),
+					path,
 					
 					name: route._name,
 					pattern: route._pattern,
