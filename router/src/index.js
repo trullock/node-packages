@@ -10,6 +10,19 @@ function isRegExp(val)
 	return isKind(val, 'RegExp');
 }
 
+// malformed encoding (e.g. "%") is left as-is, a bad link shouldn't break parsing
+function safeDecode(str)
+{
+	try
+	{
+		return decodeURIComponent(str);
+	}
+	catch(e)
+	{
+		return str;
+	}
+}
+
 function decodeQueryString(queryStr)
 {
 	let queryArr = (queryStr || '').replace('?', '').split('&'),
@@ -21,11 +34,11 @@ function decodeQueryString(queryStr)
 	{
 		equalIndex = cur.indexOf('=');
 		pName = cur.substring(0, equalIndex);
-		pValue = decodeURIComponent(cur.substring(equalIndex + 1));
+		pValue = safeDecode(cur.substring(equalIndex + 1));
 
-		if (pName in obj)
+		if (Object.hasOwn(obj, pName))
 		{
-			if(isArray(obj[pName]))
+			if(Array.isArray(obj[pName]))
 				obj[pName].push(pValue);
 			else
 				obj[pName] = [obj[pName], pValue];
@@ -127,7 +140,7 @@ Route.prototype = {
 				val = decodeQueryString(val, shouldTypecast);
 				
 				for(var key in val){
-					if(!o[key])
+					if(!Object.hasOwn(o, key))
 						o[key] = val[key];
 					else
 						o['?' + key] = val[key];

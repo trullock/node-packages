@@ -263,20 +263,24 @@ for (const [query, expected] of [
 	});
 }
 
-test("[BUG-1] query: a repeated key becomes an array", () => {
+test("query: a repeated key becomes an array", () => {
 	assert.deepStrictEqual(params("/a", "/a?x=1&x=2"), { x: ["1", "2"] });
 });
 
-test("[BUG-1] query: three repeats become one flat array", () => {
+test("query: three repeats become one flat array", () => {
 	assert.deepStrictEqual(params("/a", "/a?x=1&x=2&x=3"), { x: ["1", "2", "3"] });
 });
 
-test("[BUG-1] query: a key matching an Object.prototype member is an ordinary param", () => {
+test("query: a key matching an Object.prototype member is an ordinary param", () => {
 	assert.equal(params("/a", "/a?toString=1").toString, "1");
 });
 
-test("[BUG-2] query: malformed percent encoding does not throw", () => {
+test("query: malformed percent encoding does not throw", () => {
 	assert.doesNotThrow(() => routerWith("/a").parse("/a?x=%"));
+});
+
+test("query: malformed values are kept raw and don't affect other params", () => {
+	assert.deepStrictEqual(params("/a", "/a?x=100%&y=a%20b&z=%E0%A4%A"), { x: "100%", y: "a b", z: "%E0%A4%A" });
 });
 
 test("[BUG-3] query: a key with no value keeps its name", () => {
@@ -373,16 +377,16 @@ test("[BUG-4] interpolate: rest params accept slashes", () => {
 	assert.equal(interpolate("/a/{r*}", { r: "x/y" }), "/a/x/y");
 });
 
-test("[BUG-1] interpolate: a query object builds a query string", () => {
+test("interpolate: a query object builds a query string", () => {
 	const url = interpolate("/a", { query: { x: 1, y: "b c" } });
 	assert.deepStrictEqual(params("/a", url), { x: "1", y: "b c" });
 });
 
-test("[BUG-1] interpolate: a query object separates keys and values with a literal =", () => {
+test("interpolate: a query object separates keys and values with a literal =", () => {
 	assert.match(interpolate("/a", { query: { x: 1 } }), /^\/a\/?\?x=1$/);
 });
 
-test("[BUG-1] interpolate: a query array repeats its key", () => {
+test("interpolate: a query array repeats its key", () => {
 	assert.match(interpolate("/a", { query: { x: [1, 2] } }), /\?x=1&x=2$/);
 });
 

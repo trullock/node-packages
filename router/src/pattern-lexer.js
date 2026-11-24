@@ -172,17 +172,17 @@ export default function () {
 					var queryParts = [], rep;
 					for (var key in replacements[prop]) {
 						rep = replacements[prop][key];
-						if (isArray(rep)) {
+						if (Array.isArray(rep)) {
 							for (var k in rep) {
 								if (key.slice(-2) == '[]') {
 									queryParts.push(encodeURIComponent(key.slice(0, -2)) + '[]=' + encodeURIComponent(rep[k]));
 								} else {
-									queryParts.push(encodeURIComponent(key + '=' + rep[k]));
+									queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(rep[k]));
 								}
 							}
 						}
 						else {
-							queryParts.push(encodeURIComponent(key + '=' + rep));
+							queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(rep));
 						}
 					}
 					val = '?' + queryParts.join('&');

@@ -1,7 +1,7 @@
 # Router: known failures
 
 Run `npm test`. Every failing test is tagged `[BUG-n]` or `[DECISION-n]`, matching the entries below.
-No source has been changed; these await review.
+BUG-1 (`isArray`, query object interpolation) and BUG-2 (malformed encoding) are fixed. The rest await review.
 
 - **BUG**: throws unexpectedly, loses data, or a feature present in the code does not work.
 - **DECISION**: the test states a proposed behaviour, but the current one may be intended. If so, change the test.
@@ -10,8 +10,6 @@ No source has been changed; these await review.
 
 | # | Problem | Cause | Severity |
 |---|---|---|---|
-| 1 | Repeated query keys, keys such as `toString`, and interpolating a `query` object all throw `isArray is not defined` | Missing helper in both files. Behind it: `pName in obj` also matches inherited members; interpolation encodes the `=` (`encodeURIComponent(key + '=' + val)`) | High |
-| 2 | `?x=%` throws `URI malformed`, so a bad link breaks parsing | Unguarded `decodeURIComponent` | High |
 | 3 | Query parsing loses data: `?flag` becomes `{"": "flag"}`; `?x=1&&y=2` drops `y`; `?x=a?b` gives `ab`; keys are not decoded | `decodeQueryString`: no check for a missing `=`; loop stops at an empty part; `replace('?', '')` removes a value's `?` after the leading one is already gone | High |
 | 4 | Rest params are named `r*`, swallow the query, and cannot be interpolated | `getParamIds` keeps the `*`; rest tokens compile to `.+` / `.*`, which cross `?`; interpolation looks up `r*` | Medium |
 | 5 | `/a/:id:` matches `/a1` | The separator before an optional param is itself optional | Medium |
