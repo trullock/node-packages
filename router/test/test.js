@@ -100,10 +100,6 @@ for (const [pattern, url, matches] of [
 	["/a/:id:", "/a", true],
 	["/a/:id:", "/a/", false],
 	["/a/:id:", "/a/1/", false],
-	["/a/:id:/", "/a/", true],
-	["/a/:id:/", "/a/1/", true],
-	["/a/:id:/", "/a", false],
-	["/a/:id:/", "/a/1", false],
 	["/a/:id:", "/a/1", true],
 	["/a/:id:", "/a/1/2", false],
 	["/a/{r*}", "/a/1/2", true],
@@ -130,10 +126,6 @@ test("match: ignoreCase makes matching case insensitive", () => {
 for (const [pattern, url, expected] of [
 	["/a/:id:", "/a1", null],
 	["/a/:id:", "/a1?x=1", null],
-	["/a/:id:/b", "/a1/b", null],
-	["/a/:id:/b", "/ab", null],
-	["/a/:id:/b", "/a/b", { id: undefined }],
-	["/a/:id:/b", "/a/1/b", { id: "1" }],
 	["/a/:x:/:y:", "/a", { x: undefined, y: undefined }],
 	["/a/:x:/:y:", "/a/1", { x: "1", y: undefined }],
 	["/a/:x:/:y:", "/a/1/2", { x: "1", y: "2" }],
@@ -243,7 +235,7 @@ test("result: a trailing slash makes a different url", () => {
 	assert.notEqual(without.pattern, withSlash.pattern);
 });
 
-for (const pattern of ["/a", "/a/", "/a/{id}", "/a/{id}/", "/a/:id:", "/a/:id:/"]) {
+for (const pattern of ["/a", "/a/", "/a/{id}", "/a/{id}/", "/a/:id:"]) {
 	test(`round trip: "${pattern}" matches what it interpolates`, () => {
 		for (const values of [{ id: 1 }, { id: 1, query: { x: 1 } }])
 			assert.notEqual(routerWith(pattern).parse(interpolate(pattern, values)), null);
@@ -263,7 +255,6 @@ for (const [pattern, url, expected] of [
 	["/a/:id:", "/a/1?x=1", { id: "1", x: "1" }],
 	["/a/:id:", "/a", { id: undefined }],
 	["/a/:id:", "/a?x=1", { id: undefined, x: "1" }],
-	["/:a:/x", "/x", { a: undefined }],
 ]) {
 	test(`path params: "${pattern}" from "${url}"`, () => {
 		assert.deepStrictEqual(params(pattern, url), expected);
@@ -301,8 +292,6 @@ for (const [pattern, url, expected] of [
 	["/a/:r*:", "/a/1/2/", { r: "1/2/" }],
 	["/a/:r*:", "/a/?x=1", null],
 	["/a/:r*:", "/a/1/2?x=1", { r: "1/2", x: "1" }],
-	["/a/:r*:/b", "/a/b", { r: undefined }],
-	["/a/:r*:/b", "/a/1/2/b", { r: "1/2" }],
 	["/{r*}", "/1/2?x=1", { r: "1/2", x: "1" }],
 	["/:r*:", "/?x=1", { r: undefined, x: "1" }],
 	["/:r*:", "/1/2?x=1", { r: "1/2", x: "1" }],
@@ -321,7 +310,6 @@ for (const [pattern, values, expected] of [
 	["/a/{r*}", { r: "x/y", query: { z: 1 } }, "/a/x/y?z=1"],
 	["/a/:r*:", { r: "x/y" }, "/a/x/y"],
 	["/a/:r*:", { query: { z: 1 } }, "/a?z=1"],
-	["/a/:r*:/b", {}, "/a/b"],
 ]) {
 	test(`rest params: interpolate "${pattern}" with ${JSON.stringify(values)}`, () => {
 		assert.equal(interpolate(pattern, values), expected);
@@ -536,7 +524,6 @@ for (const [pattern, values, expected] of [
 	["/a/{id}", { id: 1, other: 2 }, "/a/1"],
 	["/a/:id:", {}, "/a"],
 	["/a/:id:", { id: 1 }, "/a/1"],
-	["/a/:id:/b", { id: 1 }, "/a/1/b"],
 ]) {
 	test(`interpolate: "${pattern}" with ${JSON.stringify(values)}`, () => {
 		assert.equal(interpolate(pattern, values), expected);
@@ -586,25 +573,11 @@ test("interpolate: does not mutate its values", () => {
 });
 
 for (const [pattern, values, expected] of [
-	["/a/:id:/b", {}, "/a/b"],
-	["/a/:id:/b", { id: "" }, "/a/b"],
-	["/a/:id:/b", { id: null }, "/a/b"],
-	["/a/:id:/b", { id: 0 }, "/a/0/b"],
-	["/a/:id:/b", { id: false }, "/a/false/b"],
 	["/a/:x:/:y:", {}, "/a"],
 	["/a/:x:/:y:", { x: 1 }, "/a/1"],
-	["/a/:x:/:y:", { y: 2 }, "/a/2"],
 	["/a/:x:/:y:", { x: 1, y: 2 }, "/a/1/2"],
-	["/a/:x:/:y:/b", {}, "/a/b"],
-	["/a/:x:/:y:/b", { x: 1 }, "/a/1/b"],
-	["/a/:x:/:y:/b", { y: 2 }, "/a/2/b"],
-	["/a/:x:/{y}", { y: 2 }, "/a/2"],
-	["/a/{x}/:y:/b", { x: 1 }, "/a/1/b"],
 	["/:x:", {}, "/"],
 	["/:x:/:y:", {}, "/"],
-	["/:x:/b", {}, "/b"],
-	["/:x:/b", { x: 1 }, "/1/b"],
-	["/:x:/{y}", { y: 2 }, "/2"],
 	["/a/:r*:", {}, "/a"],
 ]) {
 	test(`interpolate: optional segments: "${pattern}" with ${JSON.stringify(values)}`, () => {
@@ -644,7 +617,6 @@ for (const [pattern, values, expected] of [
 	["/a/", { query: { x: 1 } }, "/a/?x=1"],
 	["/a/", { query: {} }, "/a/"],
 	["/a/{id}/", { id: 1, query: { x: 1 } }, "/a/1/?x=1"],
-	["/a/:id:/", { query: { x: 1 } }, "/a/?x=1"],
 	["/", { query: { x: 1 } }, "/?x=1"],
 	["/", { query: {} }, "/"],
 	["/a/{id}", { id: 1, query: { x: 1 } }, "/a/1?x=1"],
@@ -712,6 +684,212 @@ for (const value of awkward) {
 		assert.deepStrictEqual(params("/a", interpolate("/a", { query })), query);
 	});
 }
+
+// --- pattern validation ----------------------------------------------------
+
+for (const [pattern, reason] of [
+	// optional params are whole segments, at the end
+	["/a/:id:/", /end of the path/],
+	["/a/:id:/b", /end of the path/],
+	["/:x:/b", /end of the path/],
+	["/a/:x:/{y}", /end of the path/],
+	["/a/:x:/:y:/b", /end of the path/],
+	["/a/:r*:/b", /end of the path/],
+	["/a/:r*:/:y:", /can't follow a rest param/],
+	["/a/{r*}/:y:", /can't follow a rest param/],
+	["/a/x:id:", /whole segment/],
+	["/a/x-:id:", /whole segment/],
+	["/a/:id:x", /whole segment/],
+	["/a/{x}:y:", /whole segment/],
+	// stray syntax
+	["/a/:b", /whole segment/],
+	["/a/::", /whole segment/],
+	["/a/{id", /unmatched brace/],
+	["/a/id}", /unmatched brace/],
+	["/a/{{id}}", /unmatched brace/],
+	["/a/{}", /valid name/],
+	["/a/{*}", /valid name/],
+	["/a/{x y}", /valid name/],
+	["/a/{a/b}", /unmatched brace/],
+	["/a{?}", /valid name/],
+	["/a{?q*}", /valid name/],
+	["/a?x=1", /can't contain/],
+	["/a#h", /can't contain/],
+	["/a{?q}/b", /can't contain/],
+	["//a", /empty segment/],
+	["/a//b", /empty segment/],
+	["/a/../b", /browsers resolve/],
+	["/a/./b", /browsers resolve/],
+	// ambiguous params
+	["/{a}{b}", /between them/],
+	["/{id}/b/{id}", /more than one param called "id"/],
+	["/{id}/:id:", /more than one param called "id"/],
+	["/{id}/{id*}", /more than one param called "id"/],
+	["/{id}{?id}", /more than one param called "id"/],
+]) {
+	test(`validation: "${pattern}" is rejected`, () => {
+		const router = new Router();
+		assert.throws(() => router.addRoute("a", pattern, {}), reason);
+		assert.equal(router.routes.length, 0);
+		assert.throws(() => router.interpolate("a", {}), /Cannot find route/);
+	});
+}
+
+// --- literals --------------------------------------------------------------
+
+for (const [pattern, url, matches] of [
+	["/a|b", "/a|b", true],
+	["/a|b", "/a", false],
+	["/x|/y", "/zzz/y", false],
+	["/a(b)[c]^$.*+-!", "/a(b)[c]^$.*+-!", true],
+	["/a\\d", "/a1", false],
+	["/café", "/café", true],
+	["/café", "/caf%C3%A9", true],
+	["/café", "/caf%c3%a9", true],
+	["/café", "/cafe", false],
+	["/caf%C3%A9", "/café", true],
+	["/caf%C3%A9", "/caf%C3%A9", true],
+	["/a b", "/a%20b", true],
+	["/a%20b", "/a%20b", true],
+	["/😀", "/😀", true],
+	["/😀", "/%F0%9F%98%80", true],
+	["/a%2Fb", "/a%2Fb", true],
+	["/a%2Fb", "/a/b", false],
+	["/100%", "/100%", true],
+	["/a:b", "/a:b", true],
+	["/a:b", "/a", false],
+]) {
+	test(`literals: "${pattern}" ${matches ? "matches" : "does not match"} "${url}"`, () => {
+		assert.equal(routerWith(pattern).parse(url) !== null, matches);
+	});
+}
+
+for (const pattern of ["/café", "/a b", "/a|b", "/😀", "/a%2Fb", "/100%", "/a:b", "/a-/{id}", "/é/{id}"]) {
+	test(`literals: "${pattern}" is built as a browser would show it`, () => {
+		const url = interpolate(pattern, { id: 1 });
+		assert.match(url, /^[\x21-\x7e]+$/);
+		assert.notEqual(routerWith(pattern).parse(url), null);
+	});
+}
+
+test("params: can be separated by a colon", () => {
+	assert.deepStrictEqual(params("/t/{h}:{m}:{s}", "/t/1:2:3"), { h: "1", m: "2", s: "3" });
+	assert.equal(interpolate("/t/{h}:{m}:{s}", { h: 1, m: 2, s: 3 }), "/t/1:2:3");
+});
+
+for (const pattern of ["/a-/:id:", "/é/:id:", "/a./:id:", "/{x}/:id:", "/a)/:id:"]) {
+	test(`optional segments: "${pattern}" works whatever precedes it`, () => {
+		const without = interpolate(pattern, { x: 1 });
+		const withId = interpolate(pattern, { x: 1, id: 2 });
+		assert.equal(without + "/2", withId);
+		assert.equal(params(pattern, without).id, undefined);
+		assert.equal(params(pattern, withId).id, "2");
+		assert.equal(routerWith(pattern).parse(without + "/"), null);
+	});
+}
+
+for (const [pattern, url, expected] of [
+	[":id:", "/", { id: undefined }],
+	[":id:", "/1", { id: "1" }],
+	["/:x:/:y:", "/", { x: undefined, y: undefined }],
+	["/:x:/:y:", "/1", { x: "1", y: undefined }],
+	["/:x:/:y:", "/1/2", { x: "1", y: "2" }],
+	["/a/:x:/:r*:", "/a/1", { x: "1", r: undefined }],
+	["/a/:x:/:r*:", "/a/1/2/3", { x: "1", r: "2/3" }],
+	["/a/:id::?q:", "/a?x=1", { id: undefined, x: "1" }],
+	["/a/:id:", "/a?id=5", { id: "5" }],
+	["/a/:id:", "/a/1?id=5", { id: "1" }],
+]) {
+	test(`optional segments: "${pattern}" from "${url}" gives ${JSON.stringify(expected)}`, () => {
+		assert.deepStrictEqual(params(pattern, url), expected);
+	});
+}
+
+for (const url of ["/", "//", "//a"]) {
+	test(`rest params: "/{r*}" does not match "${url}"`, () => {
+		assert.equal(routerWith("/{r*}").parse(url), null);
+	});
+}
+
+// --- unsafe and ambiguous values -------------------------------------------
+
+test("interpolate: a later optional param needs the earlier ones", () => {
+	assert.throws(() => interpolate("/a/:x:/:y:", { y: 2 }), /segment :x: is required when :y: has a value/);
+});
+
+test("interpolate: inherited properties are not values", () => {
+	assert.equal(interpolate("/a/:constructor:", {}), "/a");
+	assert.throws(() => interpolate("/a/{toString}", {}), /is required/);
+	assert.throws(() => interpolate("/a/{id}", Object.create({ id: 1 })), /is required/);
+});
+
+for (const value of [".", ".."]) {
+	test(`interpolate: a segment of "${value}" throws`, () => {
+		assert.throws(() => interpolate("/a/{id}", { id: value }), /browsers resolve/);
+		assert.throws(() => interpolate("/a/:id:", { id: value }), /browsers resolve/);
+		assert.throws(() => interpolate("/a/{r*}", { r: `x/${value}/y` }), /browsers resolve/);
+	});
+}
+
+test("interpolate: dots within a segment are fine", () => {
+	assert.equal(interpolate("/a/{id}", { id: "..." }), "/a/...");
+	assert.equal(interpolate("/a/{id}", { id: ".x" }), "/a/.x");
+	assert.equal(interpolate("/a/{name}.{ext}", { name: "x", ext: "js" }), "/a/x.js");
+});
+
+test("interpolate: a value can't make a protocol relative url", () => {
+	assert.throws(() => interpolate("/{r*}", { r: "/evil.example" }), /parsed differently/);
+	assert.throws(() => interpolate("/:r*:", { r: "/evil.example" }), /parsed differently/);
+});
+
+test("interpolate: values which would parse differently throw", () => {
+	assert.equal(interpolate("/{x}-{y}", { x: "1-2", y: "3" }), "/1-2-3");
+	assert.deepStrictEqual(params("/{x}-{y}", "/1-2-3"), { x: "1-2", y: "3" });
+	assert.throws(() => interpolate("/{x}-{y}", { x: "1", y: "2-3" }), /parsed differently/);
+	assert.throws(() => interpolate("/{a*}/{b*}", { a: "1", b: "2/3" }), /parsed differently/);
+});
+
+for (const value of ["__CR_OS__", "__CR_OMITTED__", "__CR_QUERY__", "{id}", ":id:"]) {
+	test(`interpolate: "${value}" is an ordinary value`, () => {
+		assert.equal(params("/a/{id}", interpolate("/a/{id}", { id: value })).id, value);
+	});
+}
+
+test("interpolate: an unpaired surrogate throws", () => {
+	assert.throws(() => interpolate("/a/{id}", { id: "\ud800" }), /Error interpolating route/);
+});
+
+for (const query of [{ x: { y: 1 } }, { x: [[1]] }, { x: new Date(0) }, { x: () => 1 }, ["x"], 5, true]) {
+	test(`interpolate: query of ${JSON.stringify(query)} ${typeof query} throws`, () => {
+		assert.throws(() => interpolate("/a", { query }), /Invalid value for query param|should be an object or a string/);
+	});
+}
+
+test("interpolate: query can be URLSearchParams", () => {
+	assert.deepStrictEqual(params("/a", interpolate("/a", { query: new URLSearchParams({ x: "a b", y: "+" }) })), { x: "a b", y: "+" });
+});
+
+for (const query of ["hash=1", "?x=1&hash=2", "h%61sh=1", "hash", "__proto__=1"]) {
+	test(`reserved names: query string "${query}" throws`, () => {
+		assert.throws(() => interpolate("/a", { query }), /name is reserved/);
+	});
+}
+
+test("interpolate: errors keep their cause", () => {
+	assert.throws(() => interpolate("/a/{id}", {}), e => e.cause instanceof Error && /\/a\/\{id\}/.test(e.message));
+});
+
+test("result: pattern is the registered pattern", () => {
+	assert.equal(routerWith("/a/{id}").parse("/a/1?x=1").pattern, "/a/{id}");
+});
+
+test("performance: long urls which don't match are rejected quickly", () => {
+	const long = "/" + "a/".repeat(5000) + "!";
+	const start = Date.now();
+	for (const pattern of ["/{x}/{y}/{z}", "/a/:x:/:y:/:z:", "/{r*}/z", "/a/:x:/:r*:"])
+		routerWith(pattern).parse(long + "/");
+	assert.ok(Date.now() - start < 1000);
+});
 
 // --- registration and API --------------------------------------------------
 

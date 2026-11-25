@@ -37,7 +37,7 @@ router.parse('/things/123?tab=history#latest');
 // {
 //   name: 'view-thing',
 //   path: '/things/123',
-//   pattern: '/things/{thingId}:?query:',
+//   pattern: '/things/{thingId}',
 //   data: { some: 'data' },
 //   params: { thingId: '123', tab: 'history', hash: 'latest' }
 // }
@@ -64,16 +64,45 @@ The package is an ES module. It needs `Object.hasOwn`: Node 16.9, Chrome 93, Fir
 Query strings are always captured, so they don't need declaring in the pattern. Use `{?name}` only to make a route
 match solely when there is one. The name is then the key its values go under when interpolating (`q` above).
 
-Params may appear anywhere in a pattern, and more than once per segment:
+### Required params
+
+These may appear anywhere in the path, and more than once per segment if there's something between them:
 
 ```js
 router.addRoute('edit', '/things/{thingId}/edit');
 router.addRoute('range', '/range/{from}-{to}');
-router.addRoute('nested', '/a/:x:/:y:/b');
+router.addRoute('time', '/time/{hours}:{minutes}');
 ```
 
-An optional segment is present or absent together with the slash before it, so `/things/:id:` matches `/things` and
-`/things/1`, but not `/things/` or `/things1`.
+### Optional params
+
+These must be whole segments at the **end of the path**. There may be several, each needing the one before it:
+
+```js
+router.addRoute('archive', '/archive/:year:/:month:');
+// matches /archive, /archive/2024 and /archive/2024/12
+```
+
+The slash before an optional param belongs to it: it's there when the param is, and not when it isn't. So
+`/things/:id:` matches `/things` and `/things/1`, but not `/things/` or `/things1`.
+
+A rest param, optional or not, can't be followed by an optional one.
+
+### Literal text
+
+Text with characters which browsers encode can be written either way: `/café` and `/caf%C3%A9` both match either form in
+a URL. It's encoded when interpolating.
+
+### Invalid patterns
+
+`addRoute` throws for anything else it can't match and build unambiguously:
+
+- an optional param which isn't a whole segment at the end, or a stray `:` at the start of a segment
+- unmatched braces, or params with no name
+- adjacent params (`/{a}{b}`), or two with the same name
+- empty, `.` or `..` segments
+- `?` or `#`, other than a query string param at the end
+- [reserved names](#reserved-names)
 
 ## Matching
 
@@ -112,7 +141,7 @@ protocol and host first.
 |---|---|
 | `name` | The name of the route |
 | `path` | The URL without its query string and fragment, exactly as given |
-| `pattern` | Identifies the route's pattern, the same for every URL that matches it. It isn't identical to the pattern you registered, so don't parse it |
+| `pattern` | The pattern given to `addRoute` |
 | `data` | The object given to `addRoute` |
 | `params` | Path params, query params and the fragment, below |
 
@@ -123,7 +152,8 @@ which are absent are `undefined`.
 
 ### Query params
 
-Merged into `params` alongside the path params. If the names clash, the path param wins.
+Merged into `params` alongside the path params. If the names clash, the path param wins, unless it's
+an optional one which is absent.
 
 | Query | Params |
 |---|---|
@@ -169,12 +199,17 @@ It throws an error if:
 
 - there's no route with that name
 - a required param is missing, `null` or `''`
-- a path param is an object or array
-- a query object uses a [reserved name](#reserved-names)
+- an optional param has a value, but one before it doesn't
+- a path param is an object or array, or would make a segment `.` or `..`
+- a path param's value would be parsed differently, such as `{ from: '1', to: '2-3' }` in `/range/{from}-{to}`
+- a query isn't an object or string, or has nested objects or arrays
+- a query uses a [reserved name](#reserved-names)
+
+Only a values object's own properties are used, not inherited ones.
 
 ### Query strings
 
-Pass an object, or a string, as `query`:
+Pass an object, a string or `URLSearchParams` as `query`:
 
 | `query` | Result |
 |---|---|
@@ -197,9 +232,9 @@ Interpolating values and parsing the result gives the same values back, with the
 - Values other than strings come back as strings (`1` as `'1'`), though `null` in a query is kept.
 - A query array with one item comes back as that item, and an empty one is left out.
 - A query param with the same name as a path param is hidden by it.
-- Filling in a later optional segment without an earlier one is ambiguous: `/a/:x:/:y:` with only `y: 2` gives `/a/2`,
-  which parses as `x: '2'`.
-- So is a separator within a value: `/range/{from}-{to}` with `-` in a value.
+- `undefined` in a query is left out, as is an empty string for an optional path param.
+
+Path values which can't come back the same are rejected when interpolating.
 
 Because parsing merges query params into `params`, but interpolating takes them under `query`, passing `parse(url).params`
 straight to `interpolate` drops the query string.
@@ -216,7 +251,7 @@ These can't be param names, as they have another purpose:
 
 - **In a pattern**, `addRoute` throws.
 - **In a URL**, query params called `hash` or `__proto__` are ignored. `query` is fine.
-- **In a query object** to interpolate, `hash` and `__proto__` throw. `query` is fine.
+- **In a query** to interpolate, `hash` and `__proto__` throw. `query` is fine.
 
 Any name can be used for a *route*.
 
@@ -235,8 +270,8 @@ Creates an independent router.
 | `data` | Optional. Anything, returned as it is by `parse` |
 | `priority` | Optional number. Higher is matched first |
 
-Returns the route. Throws, leaving the router unchanged, if the pattern isn't a string, the name is already in use, or a
-param's name is reserved.
+Returns the route. Throws, leaving the router unchanged, if the pattern is [invalid](#invalid-patterns) or the name is
+already in use.
 
 ### `router.parse(url)`
 
@@ -269,15 +304,17 @@ behaviour was decided.
 * Path params are decoded when parsing and encoded when interpolating. Remove any manual decoding of params, and any
   encoding of values passed to `interpolate`
 * `path` keeps its case, rather than being lowercased
-* Optional segments need their slash: `/a/:id:` no longer matches `/a1`
+* Optional params must be whole segments at the end of the path, and need their slash: `/a/:id:` no longer matches `/a1`
+* Invalid or ambiguous patterns throw, see [Invalid patterns](#invalid-patterns)
 * Rest params are named without their `*`, and no longer include the query string
 * `+` in a query string is a space
 * A query param without a value is `null`
-* `interpolate` throws for empty required params and for objects as path params, and no longer throws for a `/` in a value
+* `interpolate` throws for empty required params, objects as path params, nested query objects, and values which would be
+  parsed differently. It ignores inherited properties, and no longer throws for a `/` in a value
 * `hash`, `query` and `__proto__` are reserved as param names
-* The `pattern` in results is formatted differently
+* The `pattern` in results is exactly the registered pattern
 * Removed `shouldTypecast`, RegExp patterns and `toString`, none of which worked
-* Removed `patternLexer.strict()`, `loose()`, `legacy()` and `getOptionalParamsIds()`
+* Removed `router.patternLexer`
 * Removed the property defined on the router for each route's name
 
 **Fixed**
@@ -288,6 +325,8 @@ behaviour was decided.
 * Interpolating leaves no double slash for omitted segments, nor a slash before the query string
 * A duplicate route name leaves the router unchanged
 * Any name can be used for a route
+* Literal text can include any character, including `|`, and matches whether or not it's encoded
+* An absent optional param no longer hides a query param with the same name
 
 ### 1.0.0
 
